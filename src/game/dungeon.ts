@@ -86,6 +86,8 @@ function enemyStats(kind: EnemyKind, level: number): Omit<Actor, 'id' | 'x' | 'z
         alive: true,
         aiTimer: 0,
         aggro: false,
+        windup: 0,
+        stun: 0,
       };
     case 'bone':
       return {
@@ -101,6 +103,9 @@ function enemyStats(kind: EnemyKind, level: number): Omit<Actor, 'id' | 'x' | 'z
         alive: true,
         aiTimer: 0,
         aggro: false,
+        preferRange: 7.2,
+        windup: 0,
+        stun: 0,
       };
     case 'wretch':
       return {
@@ -116,6 +121,8 @@ function enemyStats(kind: EnemyKind, level: number): Omit<Actor, 'id' | 'x' | 'z
         alive: true,
         aiTimer: 0,
         aggro: false,
+        windup: 0,
+        stun: 0,
       };
     case 'wellborn':
       return {
@@ -132,6 +139,9 @@ function enemyStats(kind: EnemyKind, level: number): Omit<Actor, 'id' | 'x' | 'z
         isBoss: true,
         aiTimer: 0,
         aggro: true,
+        bossPhase: 1,
+        windup: 0,
+        stun: 0,
       };
   }
 }

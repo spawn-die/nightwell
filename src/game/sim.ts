@@ -5,6 +5,7 @@ import {
   nearForwardExit,
   tryAdvanceRoom,
 } from './dungeon.js';
+// currentRoom used by updatePlayer via clampToRoom path; keep
 import {
   damageActor,
   dist,
@@ -13,6 +14,7 @@ import {
   tryDash,
   updateProjectiles,
 } from './combat.js';
+import { updateEnemyCombat, beginWindup, WINDUP } from './enemies.js';
 import { equipItem } from './loot.js';
 import { saveMeta, startRun } from './state.js';
 import type { GameState, InputState } from './types.js';
@@ -27,6 +29,7 @@ export {
   nearForwardExit,
 } from './dungeon.js';
 export { damageActor, playerStrike, playerBolt, dist } from './combat.js';
+export { updateEnemyCombat, beginWindup, WINDUP } from './enemies.js';
 
 /**
  * Fixed-step simulation. Pure logic — no Three.js.
@@ -141,49 +144,8 @@ function updatePlayer(state: GameState, input: InputState, dt: number): void {
 }
 
 function updateEnemies(state: GameState, dt: number): void {
-  const p = state.player;
-  const room = currentRoom(state);
-
   for (const e of state.enemies) {
-    e.hitFlash = Math.max(0, e.hitFlash - dt);
-    e.attackCd = Math.max(0, e.attackCd - dt);
-    if (!e.alive || !p.alive) continue;
-
-    const d = dist(e.x, e.z, p.x, p.z);
-    if (d < 14 || e.aggro || e.isBoss) e.aggro = true;
-    if (!e.aggro) continue;
-
-    const dx = p.x - e.x;
-    const dz = p.z - e.z;
-    const dl = Math.hypot(dx, dz) || 1;
-    let ux = dx / dl;
-    let uz = dz / dl;
-
-    // boss orbits sometimes
-    if (e.isBoss && d < 5) {
-      const tx = -uz;
-      const tz = ux;
-      ux = ux * 0.25 + tx * 0.75;
-      uz = uz * 0.25 + tz * 0.75;
-      const n = Math.hypot(ux, uz) || 1;
-      ux /= n;
-      uz /= n;
-    }
-
-    e.facing = Math.atan2(uz, ux);
-    if (d > e.attackRange * 0.85) {
-      e.x += ux * e.speed * dt;
-      e.z += uz * e.speed * dt;
-    }
-    const c = clampToRoom(e.x, e.z, room, e.radius);
-    e.x = c.x;
-    e.z = c.z;
-
-    if (d <= e.attackRange + p.radius && e.attackCd <= 0) {
-      e.attackCd = e.isBoss ? 0.9 : 1.1;
-      damageActor(state, p, e.damage, false);
-      state.invuln = Math.max(state.invuln, 0.35);
-    }
+    updateEnemyCombat(state, e, dt);
   }
 }
 

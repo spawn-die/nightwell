@@ -14,6 +14,9 @@ export type ItemDef = {
   rarity: 'common' | 'rare' | 'echo';
 };
 
+/** Attack style for telegraphs / boss patterns */
+export type AttackStyle = 'melee' | 'lunge' | 'slam' | 'bolt';
+
 export type Actor = {
   id: string;
   kind: 'player' | EnemyKind;
@@ -34,6 +37,16 @@ export type Actor = {
   isBoss?: boolean;
   aiTimer?: number;
   aggro?: boolean;
+  /** Seconds remaining in attack telegraph (0 = idle/moving) */
+  windup?: number;
+  windupMax?: number;
+  attackStyle?: AttackStyle;
+  /** Brief stun after interrupt — cannot windup */
+  stun?: number;
+  /** Wellborn phase 1 then 2 under 50% HP */
+  bossPhase?: 1 | 2;
+  /** Preferred range for kiting (bone) */
+  preferRange?: number;
 };
 
 export type Projectile = {
@@ -112,7 +125,6 @@ export type GameState = {
   messageT: number;
   shake: number;
   runId: string;
-  /** One-frame visual events drained by the renderer */
   fxQueue: FxEvent[];
   meta: {
     bestKills: number;
@@ -122,8 +134,10 @@ export type GameState = {
 };
 
 export type FxEvent = {
-  kind: 'hit' | 'death' | 'slash' | 'bolt' | 'dash';
+  kind: 'hit' | 'death' | 'slash' | 'bolt' | 'dash' | 'telegraph' | 'slam' | 'interrupt';
   x: number;
   z: number;
   color?: number;
+  /** Optional radius for slam/telegraph rings */
+  radius?: number;
 };

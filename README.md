@@ -20,21 +20,28 @@ Open **http://localhost:4790**
 | Input | Action |
 |-------|--------|
 | **WASD** | Move |
-| **Mouse** | Aim |
-| **LMB** | Melee strike |
+| **Mouse** | Aim (also updates on click) |
+| **Hold LMB** | Melee strike (interrupts enemy windups) |
 | **RMB / F** | Soulbolt (costs Focus) |
-| **Space** | Dash (i-frames) |
-| **E** | Advance through north door (when chamber is clear) |
+| **Space** | Dash (i-frames — dodge telegraphs) |
+| **Walk into cyan gate** | Advance when chamber is clear (+Z exit) |
+| **E** | Also tries to enter the gate |
 | **I / Tab** | Reliquary (inventory / equip) |
 | **Enter / click** | Descend / retry |
 
+### Combat
+
+- Enemies **telegraph** attacks (red/purple rings). **Dash** out or **strike** to interrupt.
+- **Shades** lunge · **Bones** kite and shoot · **Wretches** heavy slam · **Wellborn** enrages under 50% HP.
+- Clear the room → *GATE OPEN* → walk through the **cyan +Z gate**.
+
 ### Loop
 
-1. Enter the **Undercroft** (5 chambers).
+1. Descend into the **Undercroft** (5 chambers).
 2. Clear shades, bone thralls, wretches — pick up **echo-loot**.
 3. Equip weapons, armor, relics (power / vitality / focus).
 4. Level up mid-run.
-5. Face the **Wellborn** in the pit.
+5. Face the **Wellborn** in the pit (two phases).
 6. Die or win — meta tracks runs, best kills, Wellborn slain (`localStorage`).
 
 ## Architecture

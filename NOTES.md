@@ -11,26 +11,32 @@ npm run build
 ## Structure
 
 - `src/game/*` — pure TS sim (no Three); unit tested  
-- `src/render/*` — world, actors, fx, bloom composer  
+- `src/game/enemies.ts` — windups, AI, boss phases  
+- `src/render/*` — world, actors, fx, bloom  
 - `src/ui/hud.ts` — DOM HUD  
+
+## Combat loop (keep working)
+
+1. **Aim on mousedown** (and mousemove) — hold LMB to strike  
+2. Enemies **telegraph** (windup) then lunge/bolt/slam — **dash** i-frames or **strike to interrupt**  
+3. Clear room → *GATE OPEN* → walk **+Z cyan gate** (auto-portal)  
+4. Wellborn **phase 2** under 50% HP (enrage)  
 
 ## Gotchas
 
-- **Aim must update on mousedown** (not only mousemove) or melee misses.  
-- Dungeon advances along **+Z**; exit door is `doors.s` (maxZ). Auto-portal when cleared + near gate.  
-- Title boots a one-shot preview world under the overlay; real DESCEND calls `startRun` again.  
-- Debug: `window.__NIGHTWELL__` → `{ state, input, view, startRun }`.
+- Dungeon advances along **+Z**; exit is `doors.s` (maxZ).  
+- Title one-shot preview under overlay; DESCEND calls `startRun` again.  
+- `preserveDrawingBuffer: true` for headless paint metrics.  
+- Debug: `window.__NIGHTWELL__` → `{ state, input, view, startRun }`.  
 
-## Shipped polish (2026-07-22)
+## Shipped “good game” depth (2026-07-22)
 
-- Dense gothic set dressing (banners, alcoves, rubble, beams, boss pit rings)
-- Combat `fxQueue` → renderer VFX (slash / hit / death / bolt / dash)
-- `preserveDrawingBuffer: true` for headless paint metrics / screenshots
-- Unit test: combat emits fxQueue events
+- Windup telegraphs + interrupt reward  
+- Shade lunge / bone kite+bolt / wretch slam  
+- Boss two-phase patterns  
+- 14 unit tests on shipped sim  
 
-## Next polish (priority)
+## Next
 
-1. Enemy density / encounter pacing  
-2. Audio  
-3. Further boss spectacle  
-4. Pages deploy `nightwell.spawndie.com`
+- Audio, denser mid-run loot choices, tuning pass  
+- Pages deploy `nightwell.spawndie.com`

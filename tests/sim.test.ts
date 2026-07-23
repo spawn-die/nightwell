@@ -10,12 +10,19 @@ import {
   currentRoom,
   buildDungeon,
   spawnRoomEnemies,
+  updateEnemyCombat,
+  beginWindup,
+  WINDUP,
 } from '../src/game/sim.js';
 import { equipItem, rollItem, recomputePlayerStats } from '../src/game/loot.js';
 import { resetActorIds } from '../src/game/dungeon.js';
+import { resetIds } from '../src/game/ids.js';
 
 describe('NIGHTWELL simulation', () => {
-  beforeEach(() => resetActorIds(1));
+  beforeEach(() => {
+    resetActorIds(1);
+    resetIds(1);
+  });
 
   it('starts on title and DESCEND begins a run', () => {
     const s = createGameStateNode(42);
@@ -171,6 +178,115 @@ describe('NIGHTWELL simulation', () => {
     step(s, input, 1 / 60); // auto-advance on portal
     expect(s.roomIndex).toBe(1);
     expect(s.enemies.filter((e) => e.alive).length).toBeGreaterThan(0);
+  });
+
+  it('enemy windup resolves into player damage after telegraph', () => {
+    const s = createGameStateNode(51);
+    startRun(s, 51);
+    s.enemies = [];
+    s.invuln = 0;
+    const foe = {
+      id: 'w1',
+      kind: 'wretch' as const,
+      x: s.player.x + 1.2,
+      z: s.player.z,
+      vx: 0,
+      vz: 0,
+      facing: 0,
+      radius: 0.7,
+      hp: 70,
+      maxHp: 70,
+      damage: 20,
+      speed: 0,
+      attackCd: 0,
+      attackRange: 2,
+      hitFlash: 0,
+      alive: true,
+      aggro: true,
+      windup: 0,
+      stun: 0,
+    };
+    s.enemies.push(foe);
+    beginWindup(foe, 'slam', 0.2);
+    expect(foe.windup).toBeGreaterThan(0);
+    const hp0 = s.player.hp;
+    // tick through windup without player invuln
+    for (let i = 0; i < 20; i++) {
+      s.invuln = 0;
+      updateEnemyCombat(s, foe, 0.05);
+    }
+    expect(foe.windup ?? 0).toBe(0);
+    expect(s.player.hp).toBeLessThan(hp0);
+  });
+
+  it('striking during windup interrupts and grants stun', () => {
+    const s = createGameStateNode(53);
+    startRun(s, 53);
+    s.enemies = [];
+    const foe = {
+      id: 'w2',
+      kind: 'shade' as const,
+      x: s.player.x + 1.1,
+      z: s.player.z,
+      vx: 0,
+      vz: 0,
+      facing: 0,
+      radius: 0.55,
+      hp: 40,
+      maxHp: 40,
+      damage: 10,
+      speed: 0,
+      attackCd: 0,
+      attackRange: 1.5,
+      hitFlash: 0,
+      alive: true,
+      windup: 0.5,
+      windupMax: 0.5,
+      attackStyle: 'lunge' as const,
+      stun: 0,
+    };
+    s.enemies.push(foe);
+    s.player.facing = 0;
+    s.strikeCd = 0;
+    s.fxQueue = [];
+    playerStrike(s);
+    expect(foe.windup ?? 0).toBe(0);
+    expect(foe.stun ?? 0).toBeGreaterThan(0);
+    expect(s.fxQueue.some((e) => e.kind === 'interrupt')).toBe(true);
+  });
+
+  it('wellborn enters phase 2 under half HP', () => {
+    const s = createGameStateNode(55);
+    startRun(s, 55);
+    s.enemies = [];
+    const boss = {
+      id: 'boss',
+      kind: 'wellborn' as const,
+      x: 0,
+      z: 0,
+      vx: 0,
+      vz: 0,
+      facing: 0,
+      radius: 1.4,
+      hp: 200,
+      maxHp: 400,
+      damage: 20,
+      speed: 3,
+      attackCd: 1,
+      attackRange: 2.4,
+      hitFlash: 0,
+      alive: true,
+      isBoss: true as const,
+      bossPhase: 1 as const,
+      aggro: true,
+      windup: 0,
+      stun: 0,
+      aiTimer: 0,
+    };
+    s.enemies.push(boss);
+    updateEnemyCombat(s, boss, 0.016);
+    expect(boss.bossPhase).toBe(2);
+    expect(s.message).toMatch(/ENRAGED/i);
   });
 
   it('combat emits fxQueue events for the renderer to drain', () => {

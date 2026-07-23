@@ -34,10 +34,26 @@ export class ActorRenderer {
       g.visible = a.alive || a.hitFlash > 0;
       g.position.set(a.x, 0, a.z);
       g.rotation.y = -a.facing + Math.PI / 2;
-      // hit flash
+      // hit flash / windup pulse
+      const windup = a.windup ?? 0;
+      const windupMax = a.windupMax ?? 1;
+      const windupT = windup > 0 ? 1 - windup / windupMax : 0;
       g.traverse((o) => {
         if (o instanceof THREE.Mesh && o.material instanceof THREE.MeshStandardMaterial) {
-          o.material.emissiveIntensity = a.hitFlash > 0 ? 1.5 : (o.userData.baseEm ?? 0);
+          if (a.hitFlash > 0) {
+            o.material.emissiveIntensity = 1.5;
+          } else if (windup > 0) {
+            o.material.emissiveIntensity = (o.userData.baseEm ?? 0.2) + 0.8 + windupT * 1.2;
+          } else {
+            o.material.emissiveIntensity = o.userData.baseEm ?? 0;
+          }
+        }
+        if (o.name === 'telegraphRing' && o instanceof THREE.Mesh) {
+          o.visible = windup > 0 && a.alive;
+          const r = (a.attackRange ?? 1.5) * (a.attackStyle === 'slam' ? 1.5 : 1.1);
+          o.scale.setScalar(0.6 + windupT * 0.9 + r * 0.15);
+          const mat = o.material as THREE.MeshBasicMaterial;
+          mat.opacity = 0.25 + windupT * 0.55;
         }
       });
       // death sink
@@ -284,6 +300,23 @@ export class ActorRenderer {
     shadow.rotation.x = -Math.PI / 2;
     shadow.position.y = 0.03;
     g.add(shadow);
+
+    if (a.kind !== 'player') {
+      const tel = new THREE.Mesh(
+        new THREE.RingGeometry(0.7, 0.95, 28),
+        new THREE.MeshBasicMaterial({
+          color: a.isBoss ? 0xc77dff : 0xff3355,
+          transparent: true,
+          opacity: 0.5,
+          side: THREE.DoubleSide,
+        }),
+      );
+      tel.rotation.x = -Math.PI / 2;
+      tel.position.y = 0.08;
+      tel.name = 'telegraphRing';
+      tel.visible = false;
+      g.add(tel);
+    }
     return g;
   }
 }

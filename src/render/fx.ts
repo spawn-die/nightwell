@@ -29,7 +29,7 @@ export class FxRenderer {
           break;
         case 'death':
           this.burst(ev.x, ev.z, ev.color ?? 0xc77dff, 22, 0.7);
-          this.ring(ev.x, ev.z, ev.color ?? 0xff66aa);
+          this.ring(ev.x, ev.z, ev.color ?? 0xff66aa, 0.5);
           break;
         case 'slash':
           this.slashArc(ev.x, ev.z, ev.color ?? 0x9bffea);
@@ -39,6 +39,17 @@ export class FxRenderer {
           break;
         case 'dash':
           this.burst(ev.x, ev.z, ev.color ?? 0x5ce1ff, 8, 0.3);
+          break;
+        case 'telegraph':
+          this.ring(ev.x, ev.z, ev.color ?? 0xff4444, Math.max(0.8, ev.radius ?? 1.5), 0.45);
+          break;
+        case 'slam':
+          this.burst(ev.x, ev.z, ev.color ?? 0xff2266, 18, 0.55);
+          this.ring(ev.x, ev.z, ev.color ?? 0xff2266, Math.max(1.2, ev.radius ?? 2.5), 0.35);
+          break;
+        case 'interrupt':
+          this.burst(ev.x, ev.z, ev.color ?? 0xffe066, 14, 0.4);
+          this.ring(ev.x, ev.z, 0xffe066, 1.1, 0.25);
           break;
       }
     }
@@ -200,9 +211,11 @@ export class FxRenderer {
     }
   }
 
-  ring(x: number, z: number, color: number): void {
+  ring(x: number, z: number, color: number, radius = 0.55, life = 0.4): void {
+    const inner = Math.max(0.15, radius * 0.55);
+    const outer = Math.max(inner + 0.12, radius);
     const mesh = new THREE.Mesh(
-      new THREE.RingGeometry(0.3, 0.55, 24),
+      new THREE.RingGeometry(inner, outer, 28),
       new THREE.MeshBasicMaterial({
         color,
         transparent: true,
@@ -213,7 +226,7 @@ export class FxRenderer {
     mesh.rotation.x = -Math.PI / 2;
     mesh.position.set(x, 0.12, z);
     this.group.add(mesh);
-    this.slashes.push({ mesh, life: 0.4, max: 0.4 });
+    this.slashes.push({ mesh, life, max: life });
   }
 
   slashArc(x: number, z: number, color: number): void {
