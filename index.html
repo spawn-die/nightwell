@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>NIGHTWELL — SpawnDie</title>
+    <meta
+      name="description"
+      content="Descend the gothic undercroft. Harvest echo-loot. Face the Wellborn. SpawnDie flagship ARPG."
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=Outfit:wght@400;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/src/styles.css" />
+  </head>
+  <body>
+    <div id="app">
+      <canvas id="c"></canvas>
+
+      <div id="hud" class="hidden">
+        <div class="top-left">
+          <div class="bar-wrap">
+            <div class="bar-label">VITALITY</div>
+            <div class="bar hp"><div id="hp-fill"></div></div>
+          </div>
+          <div class="bar-wrap">
+            <div class="bar-label">FOCUS</div>
+            <div class="bar focus"><div id="focus-fill"></div></div>
+          </div>
+          <div class="meta-row">
+            <span id="level-text">Lv 1</span>
+            <span id="room-text">Undercroft</span>
+          </div>
+        </div>
+        <div class="top-right">
+          <div id="gold-text">0 Echo</div>
+          <div id="kill-text">0 Slain</div>
+        </div>
+        <div id="boss-bar" class="hidden">
+          <div class="boss-name" id="boss-name">WELLBORN</div>
+          <div class="bar boss"><div id="boss-fill"></div></div>
+        </div>
+        <div id="toast"></div>
+        <div class="bottom-hint" id="hint">
+          WASD move · Mouse aim · LMB strike · RMB / F soulbolt · Space dash · E interact · I inventory
+        </div>
+      </div>
+
+      <div id="inventory" class="panel hidden">
+        <h2>Reliquary</h2>
+        <div id="inv-list"></div>
+        <p class="panel-foot">Click to equip · Esc / I close</p>
+      </div>
+
+      <div id="title" class="overlay">
+        <div class="title-inner">
+          <p class="eyebrow">SpawnDie Flagship</p>
+          <h1>NIGHTWELL</h1>
+          <p class="tag">Descend. Harvest. Ascend — if you can.</p>
+          <p class="blurb">
+            A gothic 3D action-RPG vertical slice. Clear the undercroft chambers, forge power from
+            echo-loot, and shatter the Wellborn at the bottom of the pit.
+          </p>
+          <button id="btn-start" type="button">DESCEND</button>
+          <p class="controls">
+            WASD · Mouse · LMB melee · RMB soulbolt · Space dash · E interact · I inventory
+          </p>
+        </div>
+      </div>
+
+      <div id="death" class="overlay hidden">
+        <div class="title-inner">
+          <h1 class="danger">CLAIMED BY THE WELL</h1>
+          <p id="death-stats" class="blurb"></p>
+          <button id="btn-retry" type="button">DESCEND AGAIN</button>
+        </div>
+      </div>
+
+      <div id="win" class="overlay hidden">
+        <div class="title-inner">
+          <h1 class="win">WELLBORN SHATTERED</h1>
+          <p id="win-stats" class="blurb"></p>
+          <button id="btn-again" type="button">DESCEND DEEPER</button>
+        </div>
+      </div>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
