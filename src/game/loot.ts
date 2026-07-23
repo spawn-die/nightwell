@@ -81,7 +81,7 @@ export function equipItem(state: GameState, itemId: string): boolean {
 
 export function recomputePlayerStats(state: GameState): void {
   const p = state.player;
-  const baseHp = 100 + (state.level - 1) * 18;
+  const baseHp = 120 + (state.level - 1) * 18;
   const baseDmg = 12 + (state.level - 1) * 2;
   const baseFocus = 50 + (state.level - 1) * 5;
 

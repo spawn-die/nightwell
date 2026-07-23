@@ -76,42 +76,48 @@ export class ActorRenderer {
   private buildActor(a: Actor): THREE.Group {
     const g = new THREE.Group();
     if (a.kind === 'player') {
-      // warden silhouette — cloak + pauldrons for readable outline
+      // Bright cyan warden — must pop against purple floors
       const cloak = new THREE.Mesh(
-        new THREE.ConeGeometry(0.55, 1.15, 8),
-        mat(0x1a2438, 0x3a6088, 0.12),
+        new THREE.ConeGeometry(0.58, 1.15, 8),
+        mat(0x2a5068, 0x40e0ff, 0.55),
       );
       cloak.position.y = 0.7;
       cloak.rotation.x = Math.PI;
-      cloak.userData.baseEm = 0.12;
+      cloak.userData.baseEm = 0.55;
       g.add(cloak);
-      const body = new THREE.Mesh(new THREE.CapsuleGeometry(0.35, 0.7, 4, 8), mat(0x3d4a5c, 0x6ec8ff, 0.25));
+      const body = new THREE.Mesh(
+        new THREE.CapsuleGeometry(0.38, 0.72, 4, 8),
+        mat(0x50e8a0, 0x70ffc0, 0.85),
+      );
       body.position.y = 1.0;
       body.castShadow = true;
-      body.userData.baseEm = 0.25;
+      body.userData.baseEm = 0.85;
       g.add(body);
-      // pauldrons
+      // point light so player always lights nearby floor
+      const glow = new THREE.PointLight(0x60ffc8, 2.2, 10, 2);
+      glow.position.y = 1.4;
+      g.add(glow);
       for (const sx of [-1, 1]) {
         const pad = new THREE.Mesh(
-          new THREE.SphereGeometry(0.18, 8, 8),
-          mat(0x4a5870, 0x5ce1ff, 0.2),
+          new THREE.SphereGeometry(0.2, 8, 8),
+          mat(0x80ffe0, 0x5ce1ff, 0.7),
         );
-        pad.position.set(sx * 0.42, 1.35, 0);
+        pad.position.set(sx * 0.44, 1.35, 0);
         pad.scale.set(1.1, 0.7, 1);
-        pad.userData.baseEm = 0.2;
+        pad.userData.baseEm = 0.7;
         g.add(pad);
       }
-      const head = new THREE.Mesh(new THREE.SphereGeometry(0.28, 12, 12), mat(0xc4a882));
-      head.position.y = 1.75;
+      const head = new THREE.Mesh(new THREE.SphereGeometry(0.3, 12, 12), mat(0xffe0c0, 0xffcc88, 0.15));
+      head.position.y = 1.78;
       head.castShadow = true;
+      head.userData.baseEm = 0.15;
       g.add(head);
-      // hood
       const hood = new THREE.Mesh(
-        new THREE.ConeGeometry(0.4, 0.5, 8),
-        mat(0x1a2030, 0x5ce1ff, 0.2),
+        new THREE.ConeGeometry(0.42, 0.52, 8),
+        mat(0x2080a0, 0x40f0ff, 0.6),
       );
-      hood.position.y = 1.98;
-      hood.userData.baseEm = 0.2;
+      hood.position.y = 2.0;
+      hood.userData.baseEm = 0.6;
       g.add(hood);
       // belt buckle glow
       const belt = new THREE.Mesh(
@@ -134,14 +140,14 @@ export class ActorRenderer {
       blade.userData.baseEm = 0.55;
       g.add(blade);
     } else if (a.kind === 'shade') {
-      // wispy void cone + trailing wisps
+      // Magenta void cone — high contrast vs floor
       const body = new THREE.Mesh(
-        new THREE.ConeGeometry(0.48, 1.7, 6),
-        mat(0x2a1840, 0x7b4dff, 0.65),
+        new THREE.ConeGeometry(0.5, 1.75, 6),
+        mat(0xc040ff, 0xff40e0, 1.1),
       );
       body.position.y = 0.95;
       body.castShadow = true;
-      body.userData.baseEm = 0.65;
+      body.userData.baseEm = 1.1;
       g.add(body);
       const mid = new THREE.Mesh(
         new THREE.SphereGeometry(0.28, 8, 8),
@@ -169,14 +175,14 @@ export class ActorRenderer {
         g.add(wisp);
       }
     } else if (a.kind === 'bone') {
-      const torso = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.9, 0.4), mat(0xd8d0c0, 0x555555, 0.08));
+      const torso = new THREE.Mesh(new THREE.BoxGeometry(0.75, 0.95, 0.45), mat(0xfff0e0, 0xffccaa, 0.35));
       torso.position.y = 1.1;
       torso.castShadow = true;
+      torso.userData.baseEm = 0.35;
       g.add(torso);
-      // rib glow slit
       const ribs = new THREE.Mesh(
         new THREE.BoxGeometry(0.45, 0.5, 0.08),
-        mat(0x1a1010, 0xff6688, 0.45),
+        mat(0x1a1010, 0xff6688, 0.9),
       );
       ribs.position.set(0, 1.15, 0.22);
       ribs.userData.baseEm = 0.45;
@@ -201,11 +207,11 @@ export class ActorRenderer {
         g.add(leg);
       }
     } else if (a.kind === 'wretch') {
-      const body = new THREE.Mesh(new THREE.SphereGeometry(0.72, 10, 10), mat(0x3a2018, 0xff4d6d, 0.28));
+      const body = new THREE.Mesh(new THREE.SphereGeometry(0.78, 10, 10), mat(0xe06040, 0xff6030, 0.75));
       body.position.y = 0.75;
       body.scale.set(1.05, 0.85, 1.15);
       body.castShadow = true;
-      body.userData.baseEm = 0.28;
+      body.userData.baseEm = 0.75;
       g.add(body);
       // hunched shoulders
       for (const sx of [-1, 1]) {

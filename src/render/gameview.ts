@@ -32,11 +32,12 @@ export class GameView {
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1.35;
+    // High exposure so gothic purple floors/actors stay readable
+    this.renderer.toneMappingExposure = 1.85;
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
 
-    this.camera = new THREE.PerspectiveCamera(42, window.innerWidth / window.innerHeight, 0.1, 200);
-    this.camera.position.set(0, 22, 18);
+    this.camera = new THREE.PerspectiveCamera(46, window.innerWidth / window.innerHeight, 0.1, 200);
+    this.camera.position.set(0, 20, 16);
 
     this.world = new WorldRenderer(this.scene);
     this.actors = new ActorRenderer(this.scene);
@@ -58,11 +59,12 @@ export class GameView {
     // post
     this.composer = new EffectComposer(this.renderer);
     this.composer.addPass(new RenderPass(this.scene, this.camera));
+    // Mild bloom — heavy bloom crushed midtones into mush
     const bloom = new UnrealBloomPass(
       new THREE.Vector2(window.innerWidth, window.innerHeight),
-      0.55,
-      0.55,
-      0.72,
+      0.28,
+      0.4,
+      0.82,
     );
     this.composer.addPass(bloom);
 

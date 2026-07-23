@@ -2,27 +2,27 @@ import * as THREE from 'three';
 import type { GameState, Room } from '../game/types.js';
 import { roomBounds } from '../game/dungeon.js';
 
-/** Brighter, more readable gothic palette */
+/** High-contrast readable gothic palette (was too dark in-game) */
 const COL = {
-  floor: 0x342c52,
-  floorAccent: 0x4a4070,
-  floorRune: 0x7b5cff,
-  wall: 0x241e3a,
-  wallEdge: 0x8a5cc8,
-  pillar: 0x322a52,
-  banner: 0x5a1840,
-  bannerTrim: 0xc9a24a,
-  wood: 0x3a2818,
-  stone: 0x3c3458,
-  coffin: 0x2a2438,
-  crate: 0x4a3420,
-  rubble: 0x4a4460,
-  emissive: 0xb48dff,
-  emissiveHot: 0xff5a70,
-  door: 0x7aeeff,
-  shrine: 0xffd98a,
-  bossGlow: 0xff3d6a,
-  beam: 0x2e2438,
+  floor: 0x5a4e7a,
+  floorAccent: 0x6e6294,
+  floorRune: 0xb08cff,
+  wall: 0x3a3258,
+  wallEdge: 0xc49bff,
+  pillar: 0x4a4268,
+  banner: 0x9a3060,
+  bannerTrim: 0xffd88a,
+  wood: 0x6a4830,
+  stone: 0x5c5480,
+  coffin: 0x4a4060,
+  crate: 0x7a5430,
+  rubble: 0x6a6288,
+  emissive: 0xd0a8ff,
+  emissiveHot: 0xff6a80,
+  door: 0x88f8ff,
+  shrine: 0xffe8a0,
+  bossGlow: 0xff5a8a,
+  beam: 0x4a4060,
 };
 
 export class WorldRenderer {
@@ -33,14 +33,13 @@ export class WorldRenderer {
 
   constructor(private scene: THREE.Scene) {
     this.scene.add(this.group);
-    // ambient + hemisphere — readable gothic, not pure black
-    const amb = new THREE.AmbientLight(0x5a4a88, 0.85);
+    // Very bright ambient so silhouettes never vanish into purple soup
+    const amb = new THREE.AmbientLight(0xc8b8f0, 1.35);
     this.scene.add(amb);
-    const hemi = new THREE.HemisphereLight(0xd0b8ff, 0x1a1028, 1.15);
+    const hemi = new THREE.HemisphereLight(0xfff0ff, 0x403060, 1.4);
     this.scene.add(hemi);
-    // key moon shaft
-    const dir = new THREE.DirectionalLight(0xf0e8ff, 1.45);
-    dir.position.set(-18, 45, -8);
+    const dir = new THREE.DirectionalLight(0xffffff, 1.8);
+    dir.position.set(-12, 50, -6);
     dir.castShadow = true;
     dir.shadow.mapSize.set(2048, 2048);
     dir.shadow.camera.near = 1;
@@ -51,13 +50,17 @@ export class WorldRenderer {
     dir.shadow.camera.bottom = -45;
     dir.shadow.bias = -0.0002;
     this.scene.add(dir);
-    // fill
-    const fill = new THREE.DirectionalLight(0x77bbff, 0.42);
-    fill.position.set(20, 20, 25);
+    const fill = new THREE.DirectionalLight(0xa0d0ff, 0.85);
+    fill.position.set(22, 28, 30);
     this.scene.add(fill);
+    // soft top light so floors stay lit
+    const top = new THREE.DirectionalLight(0xffe8ff, 0.55);
+    top.position.set(0, 60, 0);
+    this.scene.add(top);
 
-    this.scene.background = new THREE.Color(0x0c0a18);
-    this.scene.fog = new THREE.FogExp2(0x100c1c, 0.016);
+    this.scene.background = new THREE.Color(0x1a1430);
+    // Light fog — old density swallowed the scene
+    this.scene.fog = new THREE.FogExp2(0x221a38, 0.008);
   }
 
   rebuild(state: GameState): void {

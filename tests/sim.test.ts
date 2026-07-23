@@ -157,7 +157,7 @@ describe('NIGHTWELL simulation', () => {
     startRun(s, 41);
     expect(s.rooms[0]!.kind).toBe('entrance');
     expect(s.rooms[0]!.cleared).toBe(false);
-    expect(s.enemies.filter((e) => e.alive).length).toBeGreaterThanOrEqual(3);
+    expect(s.enemies.filter((e) => e.alive).length).toBeGreaterThanOrEqual(2);
   });
 
   it('cleared chamber + portal advances run (progression)', () => {
@@ -207,11 +207,11 @@ describe('NIGHTWELL simulation', () => {
       stun: 0,
     };
     s.enemies.push(foe);
-    beginWindup(foe, 'slam', 0.2);
+    beginWindup(foe, 'slam', 0.25);
     expect(foe.windup).toBeGreaterThan(0);
     const hp0 = s.player.hp;
     // tick through windup without player invuln
-    for (let i = 0; i < 20; i++) {
+    for (let i = 0; i < 30; i++) {
       s.invuln = 0;
       updateEnemyCombat(s, foe, 0.05);
     }
