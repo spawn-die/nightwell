@@ -24,6 +24,8 @@ export class GameView {
       canvas,
       antialias: true,
       powerPreference: 'high-performance',
+      // Keep buffer for screenshots / headless paint metrics (default false → black readback)
+      preserveDrawingBuffer: true,
     });
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     this.renderer.setSize(window.innerWidth, window.innerHeight);
