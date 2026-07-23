@@ -19,7 +19,7 @@ Open **http://localhost:4790**
 
 | Input | Action |
 |-------|--------|
-| **WASD** | Move |
+| **WASD** | Move (camera-relative — W is screen-up) |
 | **Mouse** | Aim (also updates on click) |
 | **Hold LMB** | Melee strike (interrupts enemy windups) |
 | **RMB / F** | Soulbolt (costs Focus) |

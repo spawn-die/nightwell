@@ -13,6 +13,8 @@ import {
   updateEnemyCombat,
   beginWindup,
   WINDUP,
+  screenToWorldMove,
+  CAM_FORWARD,
 } from '../src/game/sim.js';
 import { equipItem, rollItem, recomputePlayerStats, itemScore, tryAutoEquip } from '../src/game/loot.js';
 import { resetActorIds } from '../src/game/dungeon.js';
@@ -35,14 +37,26 @@ describe('NIGHTWELL simulation', () => {
     expect(s.player.alive).toBe(true);
   });
 
-  it('WASD moves the player (agency)', () => {
+  it('WASD moves the player (agency, camera-relative)', () => {
     const s = createGameStateNode(7);
     startRun(s, 7);
+    const x0 = s.player.x;
     const z0 = s.player.z;
     const input = createInput();
-    input.down = true;
+    // Screen-up (W) maps to camera forward — not pure -Z
+    input.up = true;
     stepFor(s, input, 0.5);
-    expect(s.player.z).toBeGreaterThan(z0);
+    const moved = Math.hypot(s.player.x - x0, s.player.z - z0);
+    expect(moved).toBeGreaterThan(0.5);
+  });
+
+  it('screenToWorldMove maps W to camera forward', () => {
+    const w = screenToWorldMove(0, 1);
+    expect(w.x).toBeCloseTo(CAM_FORWARD.x, 5);
+    expect(w.z).toBeCloseTo(CAM_FORWARD.z, 5);
+    const d = screenToWorldMove(1, 0);
+    // right is perpendicular
+    expect(Math.abs(d.x * CAM_FORWARD.x + d.z * CAM_FORWARD.z)).toBeLessThan(1e-6);
   });
 
   it('melee strike damages enemies in arc', () => {
@@ -81,6 +95,19 @@ describe('NIGHTWELL simulation', () => {
     damageActor(s, s.player, 999, false);
     expect(s.phase).toBe('lost');
     expect(s.player.alive).toBe(false);
+  });
+
+  it('player hit grants invuln so multi-hit chains cannot melt you', () => {
+    const s = createGameStateNode(14);
+    startRun(s, 14);
+    s.invuln = 0;
+    const hp0 = s.player.hp;
+    damageActor(s, s.player, 20, false);
+    expect(s.player.hp).toBe(hp0 - 20);
+    expect(s.invuln).toBeGreaterThan(0.4);
+    // second hit while invuln is ignored
+    damageActor(s, s.player, 20, false);
+    expect(s.player.hp).toBe(hp0 - 20);
   });
 
   it('boss death sets won terminal and meta progress', () => {

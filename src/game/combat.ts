@@ -26,6 +26,10 @@ export function damageActor(
   const dealt = Math.min(amount, target.hp);
   target.hp -= amount;
   target.hitFlash = 0.14;
+  // Player always gets i-frames after a hit — stops multi-shade chain deaths
+  if (target.kind === 'player') {
+    state.invuln = Math.max(state.invuln, 0.55);
+  }
   state.shake = Math.min(0.7, state.shake + (target.isBoss ? 0.28 : fromPlayer ? 0.1 : 0.12));
   state.fxQueue.push({
     kind: target.hp <= 0 ? 'death' : 'hit',
@@ -191,9 +195,9 @@ export function tryDash(state: GameState, dx: number, dz: number): boolean {
   const c = clampToRoom(p.x, p.z, currentRoom(state), p.radius);
   p.x = c.x;
   p.z = c.z;
-  state.dashCd = 0.7;
+  state.dashCd = 0.55;
   state.focus -= 7;
-  state.invuln = 0.32; // usable dodge through telegraphs
+  state.invuln = 0.45; // usable dodge through telegraphs
   state.fxQueue.push({ kind: 'dash', x: p.x, z: p.z, color: 0x5ce1ff });
   return true;
 }
@@ -215,7 +219,6 @@ export function updateProjectiles(state: GameState, dt: number): void {
     } else if (state.player.alive) {
       if (dist(pr.x, pr.z, state.player.x, state.player.z) <= pr.radius + state.player.radius) {
         damageActor(state, state.player, pr.damage, false);
-        state.invuln = Math.max(state.invuln, 0.2);
         pr.life = 0;
       }
     }

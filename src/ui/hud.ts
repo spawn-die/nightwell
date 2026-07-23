@@ -5,6 +5,7 @@ import type { GameView } from '../render/gameview.js';
 export class Hud {
   private hpFill = el<HTMLDivElement>('hp-fill');
   private focusFill = el<HTMLDivElement>('focus-fill');
+  private xpFill = el<HTMLDivElement>('xp-fill');
   private levelText = el<HTMLElement>('level-text');
   private roomText = el<HTMLElement>('room-text');
   private goldText = el<HTMLElement>('gold-text');
@@ -13,6 +14,7 @@ export class Hud {
   private bossBar = el<HTMLElement>('boss-bar');
   private bossFill = el<HTMLDivElement>('boss-fill');
   private bossName = el<HTMLElement>('boss-name');
+  private gateCue = el<HTMLElement>('gate-cue');
   private hud = el<HTMLElement>('hud');
   private inv = el<HTMLElement>('inventory');
   private invList = el<HTMLElement>('inv-list');
@@ -67,12 +69,16 @@ export class Hud {
     const hpPct = Math.max(0, p.hp / p.maxHp);
     this.hpFill.style.transform = `scaleX(${hpPct})`;
     this.focusFill.style.transform = `scaleX(${Math.max(0, state.focus / state.maxFocus)})`;
+    const xpPct = state.xpToLevel > 0 ? Math.max(0, Math.min(1, state.xp / state.xpToLevel)) : 0;
+    this.xpFill.style.transform = `scaleX(${xpPct})`;
     this.levelText.textContent = `Lv ${state.level}`;
     const room = state.rooms[state.roomIndex];
     const roomLabel = room
       ? `${room.kind.toUpperCase()} ${state.roomIndex + 1}/${state.rooms.length}`
       : '';
-    this.roomText.textContent = room?.cleared && room.doors.s ? `${roomLabel} · GATE OPEN` : roomLabel;
+    const gateOpen = !!(room?.cleared && room.doors.s);
+    this.roomText.textContent = gateOpen ? `${roomLabel} · GATE OPEN` : roomLabel;
+    this.gateCue.classList.toggle('hidden', !gateOpen || state.phase !== 'playing');
     this.goldText.textContent = `${state.gold} Echo`;
     this.killText.textContent = `${state.kills} Slain`;
 

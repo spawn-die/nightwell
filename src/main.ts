@@ -6,6 +6,7 @@ import {
 } from './game/sim.js';
 import { GameView } from './render/gameview.js';
 import { Hud } from './ui/hud.js';
+import { createAudio } from './audio/sfx.js';
 import type { InputState } from './game/types.js';
 
 const canvas = document.getElementById('c') as HTMLCanvasElement;
@@ -13,10 +14,17 @@ const state = createGameState();
 const input: InputState = createInput();
 const view = new GameView(canvas);
 const hud = new Hud();
+const audio = createAudio();
 
 const keys = new Set<string>();
 let mouseStrikeHeld = false;
 let mouseBoltHeld = false;
+let prevPhase = state.phase;
+let prevKills = 0;
+let prevLevel = state.level;
+let prevRoom = 0;
+let prevHp = state.player.hp;
+let prevMsg = '';
 
 function aimFromEvent(clientX: number, clientY: number): void {
   const g = view.screenToGround(clientX, clientY);
@@ -28,6 +36,7 @@ function aimFromEvent(clientX: number, clientY: number): void {
 
 function requestStart(): void {
   input.start = true;
+  audio.start();
 }
 
 window.addEventListener('keydown', (e) => {
@@ -38,12 +47,12 @@ window.addEventListener('keydown', (e) => {
       e.preventDefault();
     }
   }
-  // Space: start on menus, dash in combat (not both on same press after start)
   if (e.code === 'Space') {
     if (state.phase === 'title' || state.phase === 'won' || state.phase === 'lost') {
       requestStart();
     } else if (state.phase === 'playing') {
       input.dash = true;
+      audio.dash();
     }
     e.preventDefault();
   }
@@ -93,11 +102,25 @@ function syncHeld(): void {
   input.down = keys.has('KeyS') || keys.has('ArrowDown');
   input.left = keys.has('KeyA') || keys.has('ArrowLeft');
   input.right = keys.has('KeyD') || keys.has('ArrowRight');
-  // Hold-to-attack: re-pulse while buttons held (cooldowns gate rate)
   if (state.phase === 'playing') {
     if (mouseStrikeHeld) input.strike = true;
     if (mouseBoltHeld) input.bolt = true;
   }
+}
+
+function juiceFromState(): void {
+  if (state.kills > prevKills) audio.kill();
+  else if (state.player.hp < prevHp) audio.hurt();
+  if (state.level > prevLevel) audio.level();
+  if (state.roomIndex > prevRoom) audio.portal();
+  if (state.message === 'INTERRUPTED' && prevMsg !== 'INTERRUPTED') audio.interrupt();
+  if (state.phase === 'playing' && prevPhase === 'title') audio.start();
+  prevKills = state.kills;
+  prevLevel = state.level;
+  prevRoom = state.roomIndex;
+  prevHp = state.player.hp;
+  prevPhase = state.phase;
+  prevMsg = state.message;
 }
 
 let last = performance.now();
@@ -108,17 +131,13 @@ function frame(now: number): void {
   last = now;
   syncHeld();
   step(state, input, dt);
+  juiceFromState();
   hud.update(state, view);
 
-  // One-shot title backdrop: build world under the overlay without consuming real starts.
   if (state.phase === 'title' && !previewBooted) {
     previewBooted = true;
     startRun(state, 0x51a7e);
     state.phase = 'title';
-  }
-  // After a real run ends and returns to title via refresh path, allow preview again
-  if (state.phase !== 'title') {
-    // keep previewBooted true until full page reload — real startRun from step handles play
   }
 
   view.render(state, { x: input.aimX, z: input.aimZ });

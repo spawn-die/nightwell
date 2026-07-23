@@ -76,12 +76,12 @@ function enemyStats(kind: EnemyKind, level: number): Omit<Actor, 'id' | 'x' | 'z
       return {
         kind,
         radius: 0.55,
-        hp: 22 * s,
-        maxHp: 22 * s,
-        damage: 5 * s,
-        speed: 3.4,
-        attackCd: 0.6, // don't swing the instant they aggro
-        attackRange: 1.4,
+        hp: 18 * s,
+        maxHp: 18 * s,
+        damage: 4 * s,
+        speed: 2.9,
+        attackCd: 1.1, // don't swing the instant they aggro
+        attackRange: 1.35,
         hitFlash: 0,
         alive: true,
         aiTimer: 0,
@@ -93,11 +93,11 @@ function enemyStats(kind: EnemyKind, level: number): Omit<Actor, 'id' | 'x' | 'z
       return {
         kind,
         radius: 0.65,
-        hp: 40 * s,
-        maxHp: 40 * s,
-        damage: 6 * s,
-        speed: 2.6,
-        attackCd: 0.9,
+        hp: 36 * s,
+        maxHp: 36 * s,
+        damage: 5 * s,
+        speed: 2.3,
+        attackCd: 1.2,
         attackRange: 1.6,
         hitFlash: 0,
         alive: true,
@@ -111,11 +111,11 @@ function enemyStats(kind: EnemyKind, level: number): Omit<Actor, 'id' | 'x' | 'z
       return {
         kind,
         radius: 0.7,
-        hp: 58 * s,
-        maxHp: 58 * s,
-        damage: 9 * s,
-        speed: 2.2,
-        attackCd: 1.0,
+        hp: 52 * s,
+        maxHp: 52 * s,
+        damage: 7 * s,
+        speed: 2.0,
+        attackCd: 1.3,
         attackRange: 1.8,
         hitFlash: 0,
         alive: true,
@@ -128,11 +128,11 @@ function enemyStats(kind: EnemyKind, level: number): Omit<Actor, 'id' | 'x' | 'z
       return {
         kind,
         radius: 1.4,
-        hp: 420 * s,
-        maxHp: 420 * s,
-        damage: 12 * s,
-        speed: 2.8,
-        attackCd: 1.2,
+        hp: 380 * s,
+        maxHp: 380 * s,
+        damage: 10 * s,
+        speed: 2.5,
+        attackCd: 1.5,
         attackRange: 2.4,
         hitFlash: 0,
         alive: true,
@@ -156,22 +156,21 @@ export function spawnRoomEnemies(state: GameState, room: Room): void {
 
   if (room.cleared && room.kind !== 'boss') return;
 
-  // Entrance: two shades, staggered spawn angles, not all instantly aggressive
+  // Entrance: two shades far ahead — readable silhouettes, no instant dogpile
   if (room.kind === 'entrance') {
     if (state.enemies.some((e) => e.alive)) return;
     for (let i = 0; i < 2; i++) {
       const stats = enemyStats('shade', state.level);
-      const ang = Math.PI * 0.35 + i * 1.1;
       state.enemies.push({
         id: nid('en'),
-        x: room.cx + Math.cos(ang) * 6.5,
-        z: room.cz + Math.sin(ang) * 5.5,
+        x: room.cx + (i === 0 ? -4.5 : 4.5),
+        z: room.cz + 7.5,
         vx: 0,
         vz: 0,
-        facing: 0,
+        facing: Math.PI,
         ...stats,
-        aggro: false, // walk toward them; they wake at 9u
-        attackCd: 0.8 + i * 0.4,
+        aggro: false, // wake only when you close to ~6u
+        attackCd: 1.6 + i * 0.5,
       });
     }
     return;

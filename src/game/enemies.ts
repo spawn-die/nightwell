@@ -7,14 +7,14 @@ import { damageActor, dist } from './combat.js';
 import { nextId } from './ids.js';
 import type { Actor, AttackStyle, GameState, Projectile } from './types.js';
 
-/** Longer telegraphs so red rings are readable before damage lands */
+/** Long telegraphs — red danger disks must be readable before damage lands */
 export const WINDUP = {
-  shade: 0.55,
-  bone: 0.75,
-  wretch: 1.0,
-  wellbornMelee: 0.85,
-  wellbornSlam: 1.15,
-  wellbornBolt: 0.7,
+  shade: 0.85,
+  bone: 0.95,
+  wretch: 1.15,
+  wellbornMelee: 1.0,
+  wellbornSlam: 1.35,
+  wellbornBolt: 0.9,
 } as const;
 
 /** Begin a telegraphed attack if in range and not already winding up / stunned. */
@@ -75,7 +75,6 @@ function resolveWindup(state: GameState, e: Actor): void {
     const dmg = style === 'slam' ? e.damage * 1.25 : e.damage;
     damageActor(state, p, dmg, false);
     if (style === 'slam') {
-      state.invuln = Math.max(state.invuln, 0.3);
       state.shake = Math.min(0.9, state.shake + 0.35);
       state.fxQueue.push({
         kind: 'slam',
@@ -96,10 +95,10 @@ function resolveWindup(state: GameState, e: Actor): void {
     });
   }
 
-  // Longer cooldowns — room to breathe between attacks
-  if (style === 'slam') e.attackCd = e.isBoss ? 1.5 : 1.55;
-  else if (style === 'lunge') e.attackCd = 1.25;
-  else e.attackCd = e.isBoss ? 1.1 : 1.4;
+  // Generous cooldowns — room to breathe / counter between attacks
+  if (style === 'slam') e.attackCd = e.isBoss ? 1.8 : 1.9;
+  else if (style === 'lunge') e.attackCd = 1.55;
+  else e.attackCd = e.isBoss ? 1.35 : 1.7;
 }
 
 export function updateEnemyCombat(state: GameState, e: Actor, dt: number): void {
@@ -141,8 +140,8 @@ export function updateEnemyCombat(state: GameState, e: Actor, dt: number): void 
   if ((e.stun ?? 0) > 0) return;
 
   const d = dist(e.x, e.z, p.x, p.z);
-  // Tighter aggro so the whole room doesn't dogpile at once
-  if (d < 9 || e.aggro || e.isBoss) e.aggro = true;
+  // Short aggro — walk into them on purpose; don't pull half the room
+  if (d < 6.2 || e.aggro || e.isBoss) e.aggro = true;
   if (!e.aggro) return;
 
   const room = currentRoom(state);

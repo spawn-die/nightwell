@@ -2,27 +2,27 @@ import * as THREE from 'three';
 import type { GameState, Room } from '../game/types.js';
 import { roomBounds } from '../game/dungeon.js';
 
-/** High-contrast readable gothic palette (was too dark in-game) */
+/** High-contrast readable gothic palette — floors must read under bloom */
 const COL = {
-  floor: 0x5a4e7a,
-  floorAccent: 0x6e6294,
-  floorRune: 0xb08cff,
-  wall: 0x3a3258,
-  wallEdge: 0xc49bff,
-  pillar: 0x4a4268,
-  banner: 0x9a3060,
-  bannerTrim: 0xffd88a,
-  wood: 0x6a4830,
-  stone: 0x5c5480,
-  coffin: 0x4a4060,
-  crate: 0x7a5430,
-  rubble: 0x6a6288,
-  emissive: 0xd0a8ff,
-  emissiveHot: 0xff6a80,
-  door: 0x88f8ff,
-  shrine: 0xffe8a0,
-  bossGlow: 0xff5a8a,
-  beam: 0x4a4060,
+  floor: 0x7a6e9a,
+  floorAccent: 0x8e82ae,
+  floorRune: 0xd0a8ff,
+  wall: 0x4a4270,
+  wallEdge: 0xe0b8ff,
+  pillar: 0x5a5280,
+  banner: 0xb04070,
+  bannerTrim: 0xffe0a0,
+  wood: 0x7a5840,
+  stone: 0x6c6490,
+  coffin: 0x5a5070,
+  crate: 0x8a6440,
+  rubble: 0x7a72a0,
+  emissive: 0xe0c0ff,
+  emissiveHot: 0xff7a90,
+  door: 0xa0ffff,
+  shrine: 0xfff0b0,
+  bossGlow: 0xff6a9a,
+  beam: 0x5a5080,
 };
 
 export class WorldRenderer {
@@ -37,12 +37,12 @@ export class WorldRenderer {
   constructor(private scene: THREE.Scene) {
     this.scene.add(this.group);
     this.buildPortalPrefab();
-    // Very bright ambient so silhouettes never vanish into purple soup
-    const amb = new THREE.AmbientLight(0xc8b8f0, 1.35);
+    // Blinding ambient so silhouettes never vanish into purple soup
+    const amb = new THREE.AmbientLight(0xe8e0ff, 1.85);
     this.scene.add(amb);
-    const hemi = new THREE.HemisphereLight(0xfff0ff, 0x403060, 1.4);
+    const hemi = new THREE.HemisphereLight(0xffffff, 0x605080, 1.9);
     this.scene.add(hemi);
-    const dir = new THREE.DirectionalLight(0xffffff, 1.8);
+    const dir = new THREE.DirectionalLight(0xffffff, 2.4);
     dir.position.set(-12, 50, -6);
     dir.castShadow = true;
     dir.shadow.mapSize.set(2048, 2048);
@@ -54,17 +54,17 @@ export class WorldRenderer {
     dir.shadow.camera.bottom = -45;
     dir.shadow.bias = -0.0002;
     this.scene.add(dir);
-    const fill = new THREE.DirectionalLight(0xa0d0ff, 0.85);
+    const fill = new THREE.DirectionalLight(0xc0e8ff, 1.2);
     fill.position.set(22, 28, 30);
     this.scene.add(fill);
     // soft top light so floors stay lit
-    const top = new THREE.DirectionalLight(0xffe8ff, 0.55);
+    const top = new THREE.DirectionalLight(0xfff0ff, 0.9);
     top.position.set(0, 60, 0);
     this.scene.add(top);
 
-    this.scene.background = new THREE.Color(0x1a1430);
-    // Light fog — old density swallowed the scene
-    this.scene.fog = new THREE.FogExp2(0x221a38, 0.008);
+    this.scene.background = new THREE.Color(0x2a2450);
+    // Barely-there fog — depth cue without swallowing actors
+    this.scene.fog = new THREE.FogExp2(0x322858, 0.004);
   }
 
   rebuild(state: GameState): void {
@@ -195,22 +195,24 @@ export class WorldRenderer {
     const isShrine = room.kind === 'shrine';
 
     const matFloor = new THREE.MeshStandardMaterial({
-      color: isBoss ? 0x221530 : COL.floor,
-      roughness: 0.86,
-      metalness: 0.1,
+      color: isBoss ? 0x4a2858 : COL.floor,
+      roughness: 0.82,
+      metalness: 0.08,
+      emissive: isBoss ? 0x1a0818 : 0x1a1430,
+      emissiveIntensity: 0.18,
     });
     const floor = new THREE.Mesh(new THREE.BoxGeometry(room.w, 0.4, room.d), matFloor);
     floor.position.y = -0.2;
     floor.receiveShadow = true;
     g.add(floor);
 
-    // patterned tiles — brighter accent
+    // patterned tiles — high contrast checker so depth reads
     const tileMat = new THREE.MeshStandardMaterial({
-      color: isBoss ? 0x3a1848 : COL.floorAccent,
-      roughness: 0.78,
-      metalness: 0.14,
-      emissive: isBoss ? 0x3a0848 : 0x120a28,
-      emissiveIntensity: isBoss ? 0.35 : 0.22,
+      color: isBoss ? 0x5a3068 : COL.floorAccent,
+      roughness: 0.72,
+      metalness: 0.12,
+      emissive: isBoss ? 0x4a1848 : 0x2a2048,
+      emissiveIntensity: isBoss ? 0.45 : 0.35,
     });
     for (let ix = -2; ix <= 2; ix++) {
       for (let iz = -2; iz <= 2; iz++) {

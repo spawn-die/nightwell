@@ -94,8 +94,8 @@ export function tryAutoEquip(state: GameState, item: ItemDef): boolean {
 
 export function recomputePlayerStats(state: GameState): void {
   const p = state.player;
-  const baseHp = 120 + (state.level - 1) * 18;
-  const baseDmg = 12 + (state.level - 1) * 2;
+  const baseHp = 160 + (state.level - 1) * 20;
+  const baseDmg = 14 + (state.level - 1) * 2.5;
   const baseFocus = 50 + (state.level - 1) * 5;
 
   let vit = 0;

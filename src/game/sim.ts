@@ -5,7 +5,6 @@ import {
   nearForwardExit,
   tryAdvanceRoom,
 } from './dungeon.js';
-// currentRoom used by updatePlayer via clampToRoom path; keep
 import {
   damageActor,
   dist,
@@ -16,6 +15,7 @@ import {
 } from './combat.js';
 import { updateEnemyCombat, beginWindup, WINDUP } from './enemies.js';
 import { equipItem, tryAutoEquip, itemScore } from './loot.js';
+import { screenToWorldMove } from './cameraBasis.js';
 import { saveMeta, startRun } from './state.js';
 import type { GameState, InputState } from './types.js';
 
@@ -30,6 +30,7 @@ export {
 } from './dungeon.js';
 export { damageActor, playerStrike, playerBolt, dist } from './combat.js';
 export { updateEnemyCombat, beginWindup, WINDUP } from './enemies.js';
+export { screenToWorldMove, CAM_FORWARD, CAM_RIGHT } from './cameraBasis.js';
 
 /**
  * Fixed-step simulation. Pure logic — no Three.js.
@@ -112,16 +113,22 @@ function updatePlayer(state: GameState, input: InputState, dt: number): void {
   const p = state.player;
   if (!p.alive) return;
 
+  // Screen-space stick: W = screen-up, D = screen-right (matches isometric camera)
+  let sx = 0;
+  let sz = 0;
+  if (input.up) sz += 1;
+  if (input.down) sz -= 1;
+  if (input.right) sx += 1;
+  if (input.left) sx -= 1;
+  const stickLen = Math.hypot(sx, sz);
   let mx = 0;
   let mz = 0;
-  if (input.up) mz -= 1;
-  if (input.down) mz += 1;
-  if (input.left) mx -= 1;
-  if (input.right) mx += 1;
-  const len = Math.hypot(mx, mz);
-  if (len > 0) {
-    mx /= len;
-    mz /= len;
+  if (stickLen > 0) {
+    sx /= stickLen;
+    sz /= stickLen;
+    const world = screenToWorldMove(sx, sz);
+    mx = world.x;
+    mz = world.z;
     p.vx = mx * p.speed;
     p.vz = mz * p.speed;
   } else {

@@ -32,12 +32,12 @@ export class GameView {
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    // High exposure so gothic purple floors/actors stay readable
-    this.renderer.toneMappingExposure = 1.85;
+    // Punchy exposure — midtones must not collapse into purple mush
+    this.renderer.toneMappingExposure = 2.15;
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
 
-    this.camera = new THREE.PerspectiveCamera(46, window.innerWidth / window.innerHeight, 0.1, 200);
-    this.camera.position.set(0, 20, 16);
+    this.camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 200);
+    this.camera.position.set(0, 16, 12);
 
     this.world = new WorldRenderer(this.scene);
     this.actors = new ActorRenderer(this.scene);
@@ -59,12 +59,12 @@ export class GameView {
     // post
     this.composer = new EffectComposer(this.renderer);
     this.composer.addPass(new RenderPass(this.scene, this.camera));
-    // Mild bloom — heavy bloom crushed midtones into mush
+    // Very mild bloom — only emissive accents pop, floors stay solid
     const bloom = new UnrealBloomPass(
       new THREE.Vector2(window.innerWidth, window.innerHeight),
-      0.28,
-      0.4,
-      0.82,
+      0.18,
+      0.35,
+      0.88,
     );
     this.composer.addPass(bloom);
 
@@ -102,10 +102,11 @@ export class GameView {
     aimMat.color.setHex(state.strikeCd > 0 ? 0x8866aa : 0xff6ad5);
     aimMat.opacity = state.strikeCd > 0 ? 0.4 : 0.9;
 
-    // isometric-ish follow cam
+    // Closer isometric follow — characters + telegraphs fill the frame
     const p = state.player;
     const target = new THREE.Vector3(p.x, 0, p.z);
-    const camOffset = new THREE.Vector3(-10, 18, 14);
+    // Must stay in sync with cameraBasis.ts LOOK offsets
+    const camOffset = new THREE.Vector3(-8, 14, 11);
     // slight zoom punch during hitstop
     if (state.hitstop > 0) {
       camOffset.multiplyScalar(0.94);
