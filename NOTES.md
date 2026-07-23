@@ -8,9 +8,18 @@ npm test
 npm run build
 ```
 
+## L2 hero identity (2026-07-23) — showable
+
+- **Cyan circle is dead.** Player primary body is a **textured character card** (`HERO_IDENTITY.proxy = 'card'`), not sphere/capsule.
+- Canon + idle/walk PNGs under `public/assets/` and bundled via `src/assets/` imports.
+- Look Court L1 via `@spawndie/forge`: legacy sphere mush **FAIL**; current hero claim **PASS** (`tests/presentation.test.ts`).
+- Camera closer `(-7.2, 12.5, 10)` — keep `cameraBasis.ts` LOOK in sync.
+- Deferred: enemy art lattice, Atelier gen, MLLM court, shell, full L3 anim polish.
+
 ## Readable & fair (do not regress)
 
-- **See yourself**: oversized mint player, thick ground ring, personal point light  
+- **See yourself**: **Well-Walker card** + thick ground ring + personal point light  
+
 - **See the room**: bright floor/tiles, heavy ambient, light fog, mild bloom, closer cam `(-8,14,11)`  
 - **See danger**: yellow→red filled **hit-radius disk** during windup (not a tiny ring)  
 - **Survive hits**: any player damage grants **~0.55s invuln**; long windups; lower shade dmg; entrance spawns far ahead  

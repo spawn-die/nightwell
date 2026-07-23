@@ -106,7 +106,8 @@ export class GameView {
     const p = state.player;
     const target = new THREE.Vector3(p.x, 0, p.z);
     // Must stay in sync with cameraBasis.ts LOOK offsets
-    const camOffset = new THREE.Vector3(-8, 14, 11);
+    // Slightly closer so L2 hero card fills frame (keep cameraBasis LOOK in sync)
+    const camOffset = new THREE.Vector3(-7.2, 12.5, 10);
     // slight zoom punch during hitstop
     if (state.hitstop > 0) {
       camOffset.multiplyScalar(0.94);

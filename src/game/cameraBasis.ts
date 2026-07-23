@@ -1,9 +1,9 @@
 /**
- * Matches GameView camera offset (-8, 14, 11): screen-forward WASD feels correct.
- * lookDir xz from camera toward target = -offset.xz = (8, -11)
+ * Matches GameView camera offset (-7.2, 12.5, 10): screen-forward WASD feels correct.
+ * lookDir xz from camera toward target = -offset.xz = (7.2, -10)
  */
-const LOOK_X = 8;
-const LOOK_Z = -11;
+const LOOK_X = 7.2;
+const LOOK_Z = -10;
 const LEN = Math.hypot(LOOK_X, LOOK_Z);
 
 /** Unit forward on screen (W) in world XZ */

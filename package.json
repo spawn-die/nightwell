@@ -11,10 +11,17 @@
     "test": "vitest run",
     "start": "vite --port 4790 --host"
   },
-  "keywords": ["game", "arpg", "threejs", "spawn-die", "nightwell"],
+  "keywords": [
+    "game",
+    "arpg",
+    "threejs",
+    "spawn-die",
+    "nightwell"
+  ],
   "author": "spawn-die",
   "license": "MIT",
   "dependencies": {
+    "@spawndie/forge": "file:../forge",
     "three": "^0.172.0"
   },
   "devDependencies": {

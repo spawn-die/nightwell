@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { HERO_IDENTITY } from '../game/presentation.js';
 import type { Actor, GameState } from '../game/types.js';
 
 function mat(color: number, emissive = 0x000000, em = 0): THREE.MeshStandardMaterial {
@@ -11,17 +12,41 @@ function mat(color: number, emissive = 0x000000, em = 0): THREE.MeshStandardMate
   });
 }
 
+/** Camera-relative yaw so the hero card always faces the isometric camera. */
+const CAM_FACE_YAW = Math.atan2(-7.2, 10);
+
 export class ActorRenderer {
   group = new THREE.Group();
   private meshes = new Map<string, THREE.Group>();
+  private heroMap: THREE.Texture;
+  private heroIdleMaps: THREE.Texture[] = [];
+  private walkPhase = 0;
 
   constructor(scene: THREE.Scene) {
     scene.add(this.group);
+    const loader = new THREE.TextureLoader();
+    const prep = (tex: THREE.Texture) => {
+      tex.colorSpace = THREE.SRGBColorSpace;
+      tex.anisotropy = 8;
+      tex.minFilter = THREE.LinearMipmapLinearFilter;
+      tex.magFilter = THREE.LinearFilter;
+      tex.needsUpdate = true;
+      return tex;
+    };
+    // Bundled URLs — load immediately (cached by browser/vite)
+    this.heroMap = prep(loader.load(HERO_IDENTITY.canonBase));
+    this.heroIdleMaps = HERO_IDENTITY.idleFrames.map((url) => prep(loader.load(url)));
   }
 
   sync(state: GameState): void {
     const seen = new Set<string>();
     const all: Actor[] = [state.player, ...state.enemies];
+    const moving =
+      state.player.alive &&
+      (Math.abs(state.player.vx) > 0.15 || Math.abs(state.player.vz) > 0.15);
+    if (moving) this.walkPhase += 0.14;
+    else this.walkPhase += 0.04;
+
     for (const a of all) {
       if (!a.alive && a.hitFlash <= 0 && a.kind !== 'player') continue;
       seen.add(a.id);
@@ -33,16 +58,40 @@ export class ActorRenderer {
       }
       g.visible = a.alive || a.hitFlash > 0;
       g.position.set(a.x, 0, a.z);
-      g.rotation.y = -a.facing + Math.PI / 2;
-      // hit flash / windup pulse
+
+      if (a.kind === 'player') {
+        // Billboard: always face camera so character art is readable
+        g.rotation.y = CAM_FACE_YAW;
+      } else {
+        g.rotation.y = -a.facing + Math.PI / 2;
+      }
+
       const windup = a.windup ?? 0;
       const windupMax = a.windupMax ?? 1;
       const windupT = windup > 0 ? 1 - windup / windupMax : 0;
-      // Real hit footprint (matches resolveWindup ranges closely)
       const styleMul = a.attackStyle === 'slam' ? 1.55 : a.attackStyle === 'lunge' ? 1.35 : 1.1;
       const hitRadius = (a.attackRange ?? 1.5) * styleMul + 0.7;
+
       g.traverse((o) => {
         if (o instanceof THREE.Mesh && o.material instanceof THREE.MeshStandardMaterial) {
+          if (o.name === 'heroCard') {
+            const hm = o.material;
+            const frames = this.heroIdleMaps.length > 0 ? this.heroIdleMaps : [this.heroMap];
+            const idx = Math.floor(this.walkPhase) % frames.length;
+            const frame = frames[idx]!;
+            if (hm.map !== frame) {
+              hm.map = frame;
+              hm.needsUpdate = true;
+            }
+            if (a.hitFlash > 0) {
+              hm.emissiveIntensity = 1.9;
+            } else if (windup > 0) {
+              hm.emissiveIntensity = 0.55 + windupT * 0.9;
+            } else {
+              hm.emissiveIntensity = (hm.userData.baseEm as number) ?? 0.5;
+            }
+            return;
+          }
           if (a.hitFlash > 0) {
             o.material.emissiveIntensity = 2.2;
           } else if (windup > 0) {
@@ -51,43 +100,42 @@ export class ActorRenderer {
             o.material.emissiveIntensity = o.userData.baseEm ?? 0;
           }
         }
-        // Filled danger disk + outer ring — yellow → red as strike lands
         if ((o.name === 'telegraphDisk' || o.name === 'telegraphRing') && o instanceof THREE.Mesh) {
           o.visible = windup > 0 && a.alive;
           o.scale.setScalar(Math.max(0.8, hitRadius));
-          const mat = o.material as THREE.MeshBasicMaterial;
+          const m = o.material as THREE.MeshBasicMaterial;
           const hot = windupT > 0.65;
-          mat.color.setHex(hot ? 0xff2244 : a.isBoss ? 0xe0a0ff : 0xffaa33);
+          m.color.setHex(hot ? 0xff2244 : a.isBoss ? 0xe0a0ff : 0xffaa33);
           if (o.name === 'telegraphDisk') {
-            mat.opacity = 0.18 + windupT * 0.42;
+            m.opacity = 0.18 + windupT * 0.42;
           } else {
-            mat.opacity = 0.55 + windupT * 0.4;
+            m.opacity = 0.55 + windupT * 0.4;
           }
         }
       });
-      // death sink
+
       if (!a.alive) {
         g.position.y = -0.4;
         g.scale.setScalar(0.85);
       } else {
         g.scale.setScalar(1);
       }
-      // player ground ring pulse + invuln blink
+
       if (a.kind === 'player') {
         const inv = state.invuln > 0;
         g.traverse((o) => {
           if (o.name === 'playerRing' && o instanceof THREE.Mesh) {
-            const mat = o.material as THREE.MeshBasicMaterial;
-            mat.opacity = inv
+            const m = o.material as THREE.MeshBasicMaterial;
+            m.opacity = inv
               ? 0.45 + Math.sin(Date.now() * 0.03) * 0.4
               : 0.9 + Math.sin(Date.now() * 0.008) * 0.08;
-            mat.color.setHex(inv ? 0xffffff : 0x60ffe0);
+            m.color.setHex(inv ? 0xffffff : 0x60ffe0);
           }
         });
         g.visible = a.alive && (!inv || Math.sin(Date.now() * 0.04) > -0.35);
       }
     }
-    // remove stale
+
     for (const [id, g] of this.meshes) {
       if (!seen.has(id)) {
         this.group.remove(g);
@@ -96,102 +144,78 @@ export class ActorRenderer {
     }
   }
 
-  private buildActor(a: Actor): THREE.Group {
+  private buildPlayerCard(): THREE.Group {
     const g = new THREE.Group();
+    g.userData.kind = 'player';
+    g.userData.identityProxy = HERO_IDENTITY.proxy;
+
+    const { w, h } = HERO_IDENTITY.cardSize;
+    const cardMat = new THREE.MeshStandardMaterial({
+      map: this.heroMap,
+      color: 0xffffff,
+      transparent: true,
+      alphaTest: 0.08,
+      roughness: 0.48,
+      metalness: 0.08,
+      emissive: 0x248868,
+      emissiveIntensity: 0.55,
+      side: THREE.DoubleSide,
+      depthWrite: true,
+    });
+    cardMat.userData.baseEm = 0.55;
+
+    const card = new THREE.Mesh(new THREE.PlaneGeometry(w, h), cardMat);
+    card.position.y = h * 0.48;
+    card.castShadow = true;
+    card.name = 'heroCard';
+    card.userData.identityProxy = 'card';
+    card.userData.baseEm = 0.55;
+    g.add(card);
+
+    const ring = new THREE.Mesh(
+      new THREE.RingGeometry(0.85, 1.2, 48),
+      new THREE.MeshBasicMaterial({
+        color: 0x60ffe0,
+        transparent: true,
+        opacity: 0.95,
+        side: THREE.DoubleSide,
+        depthWrite: false,
+      }),
+    );
+    ring.rotation.x = -Math.PI / 2;
+    ring.position.y = 0.08;
+    ring.name = 'playerRing';
+    g.add(ring);
+
+    const pad = new THREE.Mesh(
+      new THREE.CircleGeometry(0.9, 32),
+      new THREE.MeshBasicMaterial({
+        color: 0x40ffc0,
+        transparent: true,
+        opacity: 0.32,
+        depthWrite: false,
+      }),
+    );
+    pad.rotation.x = -Math.PI / 2;
+    pad.position.y = 0.05;
+    g.add(pad);
+
+    const glow = new THREE.PointLight(0x70ffe0, 5.5, 20, 1.4);
+    glow.position.y = 1.8;
+    g.add(glow);
+
+    return g;
+  }
+
+  private buildActor(a: Actor): THREE.Group {
     if (a.kind === 'player') {
-      // Bright cyan warden — must pop against purple floors (slightly oversized)
-      const cloak = new THREE.Mesh(
-        new THREE.ConeGeometry(0.68, 1.3, 8),
-        mat(0x2a6080, 0x50f0ff, 0.9),
-      );
-      cloak.position.y = 0.75;
-      cloak.rotation.x = Math.PI;
-      cloak.userData.baseEm = 0.9;
-      g.add(cloak);
-      const body = new THREE.Mesh(
-        new THREE.CapsuleGeometry(0.45, 0.85, 4, 8),
-        mat(0x60ffb0, 0x80ffd0, 1.2),
-      );
-      body.position.y = 1.1;
-      body.castShadow = true;
-      body.userData.baseEm = 1.2;
-      g.add(body);
-      // thick ground ring — always find yourself
-      const ring = new THREE.Mesh(
-        new THREE.RingGeometry(0.65, 0.95, 32),
-        new THREE.MeshBasicMaterial({
-          color: 0x60ffe0,
-          transparent: true,
-          opacity: 0.95,
-          side: THREE.DoubleSide,
-          depthWrite: false,
-        }),
-      );
-      ring.rotation.x = -Math.PI / 2;
-      ring.position.y = 0.08;
-      ring.name = 'playerRing';
-      g.add(ring);
-      // soft fill disk under feet
-      const pad = new THREE.Mesh(
-        new THREE.CircleGeometry(0.7, 24),
-        new THREE.MeshBasicMaterial({
-          color: 0x40ffc0,
-          transparent: true,
-          opacity: 0.28,
-          depthWrite: false,
-        }),
-      );
-      pad.rotation.x = -Math.PI / 2;
-      pad.position.y = 0.05;
-      g.add(pad);
-      // point light so player always lights nearby floor
-      const glow = new THREE.PointLight(0x70ffe0, 4.5, 16, 1.6);
-      glow.position.y = 1.5;
-      g.add(glow);
-      for (const sx of [-1, 1]) {
-        const shoulder = new THREE.Mesh(
-          new THREE.SphereGeometry(0.22, 8, 8),
-          mat(0x80ffe0, 0x5ce1ff, 1.0),
-        );
-        shoulder.position.set(sx * 0.5, 1.45, 0);
-        shoulder.scale.set(1.1, 0.7, 1);
-        shoulder.userData.baseEm = 1.0;
-        g.add(shoulder);
-      }
-      const head = new THREE.Mesh(new THREE.SphereGeometry(0.34, 12, 12), mat(0xffe8d0, 0xffcc88, 0.35));
-      head.position.y = 1.95;
-      head.castShadow = true;
-      head.userData.baseEm = 0.35;
-      g.add(head);
-      const hood = new THREE.Mesh(
-        new THREE.ConeGeometry(0.48, 0.58, 8),
-        mat(0x30a0c0, 0x50ffff, 1.0),
-      );
-      hood.position.y = 2.2;
-      hood.userData.baseEm = 1.0;
-      g.add(hood);
-      // belt buckle glow
-      const belt = new THREE.Mesh(
-        new THREE.BoxGeometry(0.55, 0.1, 0.35),
-        mat(0x2a3040, 0x88ccff, 0.35),
-      );
-      belt.position.set(0, 0.85, 0.1);
-      belt.userData.baseEm = 0.35;
-      g.add(belt);
-      // blade
-      const hilt = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.12, 0.28), mat(0x3a3048, 0x5ce1ff, 0.3));
-      hilt.position.set(0.45, 1.1, 0);
-      hilt.userData.baseEm = 0.3;
-      g.add(hilt);
-      const blade = new THREE.Mesh(
-        new THREE.BoxGeometry(0.07, 0.07, 1.35),
-        mat(0xc0d0e0, 0x88ccff, 0.55),
-      );
-      blade.position.set(0.45, 1.1, 0.55);
-      blade.userData.baseEm = 0.55;
-      g.add(blade);
-    } else if (a.kind === 'shade') {
-      // Magenta void cone — high contrast vs floor
+      return this.buildPlayerCard();
+    }
+
+    const g = new THREE.Group();
+    g.userData.kind = a.kind;
+
+    if (a.kind === 'shade') {
       const body = new THREE.Mesh(
         new THREE.ConeGeometry(0.5, 1.75, 6),
         mat(0xc040ff, 0xff40e0, 1.1),
@@ -214,7 +238,6 @@ export class ActorRenderer {
       eye.position.set(0, 1.4, 0.28);
       eye.userData.baseEm = 1.4;
       g.add(eye);
-      // side wisps
       for (const sx of [-1, 1]) {
         const wisp = new THREE.Mesh(
           new THREE.ConeGeometry(0.12, 0.7, 4),
@@ -241,7 +264,6 @@ export class ActorRenderer {
       const skull = new THREE.Mesh(new THREE.SphereGeometry(0.32, 10, 10), mat(0xf0e8d8));
       skull.position.y = 1.8;
       g.add(skull);
-      // jaw
       const jaw = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.1, 0.2), mat(0xe0d8c8));
       jaw.position.set(0, 1.58, 0.18);
       g.add(jaw);
@@ -251,7 +273,6 @@ export class ActorRenderer {
         arm.rotation.z = sx * 0.15;
         g.add(arm);
       }
-      // legs
       for (const sx of [-1, 1]) {
         const leg = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.7, 0.16), mat(0xc8c0b0));
         leg.position.set(sx * 0.2, 0.4, 0);
@@ -264,7 +285,6 @@ export class ActorRenderer {
       body.castShadow = true;
       body.userData.baseEm = 0.75;
       g.add(body);
-      // hunched shoulders
       for (const sx of [-1, 1]) {
         const shoulder = new THREE.Mesh(
           new THREE.SphereGeometry(0.28, 8, 8),
@@ -278,7 +298,6 @@ export class ActorRenderer {
       head.position.set(0, 1.48, 0.38);
       head.userData.baseEm = 0.2;
       g.add(head);
-      // maw
       const maw = new THREE.Mesh(
         new THREE.SphereGeometry(0.14, 6, 6),
         mat(0x1a0808, 0xff2244, 0.9),
@@ -287,7 +306,6 @@ export class ActorRenderer {
       maw.userData.baseEm = 0.9;
       g.add(maw);
     } else if (a.kind === 'wellborn') {
-      // boss — tall crowned void entity with layered silhouette
       const skirt = new THREE.Mesh(
         new THREE.ConeGeometry(1.4, 1.6, 8),
         mat(0x0c0618, 0x8a4dff, 0.4),
@@ -304,7 +322,6 @@ export class ActorRenderer {
       core.castShadow = true;
       core.userData.baseEm = 0.85;
       g.add(core);
-      // chest sigil
       const sigil = new THREE.Mesh(
         new THREE.OctahedronGeometry(0.35, 0),
         mat(0xff88cc, 0xff4d6d, 1.3),
@@ -319,7 +336,6 @@ export class ActorRenderer {
       crown.position.y = 3.35;
       crown.userData.baseEm = 0.95;
       g.add(crown);
-      // crown spikes
       for (let i = 0; i < 5; i++) {
         const ang = (i / 5) * Math.PI * 2;
         const spike = new THREE.Mesh(
@@ -349,7 +365,7 @@ export class ActorRenderer {
         g.add(orb);
       }
     }
-    // shadow blob
+
     const shadow = new THREE.Mesh(
       new THREE.CircleGeometry(a.radius * 1.25, 16),
       new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.38 }),
@@ -358,39 +374,36 @@ export class ActorRenderer {
     shadow.position.y = 0.03;
     g.add(shadow);
 
-    if (a.kind !== 'player') {
-      // Unit-radius disk scaled to real hit radius in sync()
-      const disk = new THREE.Mesh(
-        new THREE.CircleGeometry(1, 40),
-        new THREE.MeshBasicMaterial({
-          color: a.isBoss ? 0xc77dff : 0xffaa33,
-          transparent: true,
-          opacity: 0.35,
-          side: THREE.DoubleSide,
-          depthWrite: false,
-        }),
-      );
-      disk.rotation.x = -Math.PI / 2;
-      disk.position.y = 0.07;
-      disk.name = 'telegraphDisk';
-      disk.visible = false;
-      g.add(disk);
-      const tel = new THREE.Mesh(
-        new THREE.RingGeometry(0.88, 1.0, 40),
-        new THREE.MeshBasicMaterial({
-          color: a.isBoss ? 0xe0a0ff : 0xff3355,
-          transparent: true,
-          opacity: 0.85,
-          side: THREE.DoubleSide,
-          depthWrite: false,
-        }),
-      );
-      tel.rotation.x = -Math.PI / 2;
-      tel.position.y = 0.09;
-      tel.name = 'telegraphRing';
-      tel.visible = false;
-      g.add(tel);
-    }
+    const disk = new THREE.Mesh(
+      new THREE.CircleGeometry(1, 40),
+      new THREE.MeshBasicMaterial({
+        color: a.isBoss ? 0xc77dff : 0xffaa33,
+        transparent: true,
+        opacity: 0.35,
+        side: THREE.DoubleSide,
+        depthWrite: false,
+      }),
+    );
+    disk.rotation.x = -Math.PI / 2;
+    disk.position.y = 0.07;
+    disk.name = 'telegraphDisk';
+    disk.visible = false;
+    g.add(disk);
+    const tel = new THREE.Mesh(
+      new THREE.RingGeometry(0.88, 1.0, 40),
+      new THREE.MeshBasicMaterial({
+        color: a.isBoss ? 0xe0a0ff : 0xff3355,
+        transparent: true,
+        opacity: 0.85,
+        side: THREE.DoubleSide,
+        depthWrite: false,
+      }),
+    );
+    tel.rotation.x = -Math.PI / 2;
+    tel.position.y = 0.09;
+    tel.name = 'telegraphRing';
+    tel.visible = false;
+    g.add(tel);
     return g;
   }
 }

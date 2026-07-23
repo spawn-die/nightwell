@@ -4,6 +4,7 @@ import {
   startRun,
   step,
 } from './game/sim.js';
+import { HERO_IDENTITY } from './game/presentation.js';
 import { GameView } from './render/gameview.js';
 import { Hud } from './ui/hud.js';
 import { createAudio } from './audio/sfx.js';
@@ -147,6 +148,6 @@ function frame(now: number): void {
 requestAnimationFrame(frame);
 
 // @ts-expect-error debug hook for Playwright / agents
-window.__NIGHTWELL__ = { state, input, startRun, view };
+window.__NIGHTWELL__ = { state, input, startRun, view, hero: HERO_IDENTITY };
 
 export { state, view };
