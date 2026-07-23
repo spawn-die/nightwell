@@ -105,9 +105,9 @@ export class GameView {
     // Closer isometric follow — characters + telegraphs fill the frame
     const p = state.player;
     const target = new THREE.Vector3(p.x, 0, p.z);
-    // Must stay in sync with cameraBasis.ts LOOK offsets
-    // Slightly closer so L2 hero card fills frame (keep cameraBasis LOOK in sync)
-    const camOffset = new THREE.Vector3(-7.2, 12.5, 10);
+    // More side-on iso so hero height/sword read (not top-down cyan disc).
+    // Keep cameraBasis.ts LOOK in sync with XZ of this offset.
+    const camOffset = new THREE.Vector3(-11, 9.5, 14);
     // slight zoom punch during hitstop
     if (state.hitstop > 0) {
       camOffset.multiplyScalar(0.94);

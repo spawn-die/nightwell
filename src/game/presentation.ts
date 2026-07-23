@@ -36,8 +36,8 @@ export const HERO_IDENTITY = {
     '/assets/actors/hero_walk_03.png',
     '/assets/actors/hero_walk_04.png',
   ],
-  /** Card plane size in world units (width × height) — large enough to read at iso cam. */
-  cardSize: { w: 3.1, h: 4.65 },
+  /** Card plane size in world units — tall enough that sword/hood break circular read. */
+  cardSize: { w: 3.4, h: 3.4 },
   paletteLock: ['#32DCAE', '#0E2A44', '#5AFFF0', '#FFE0C0'],
 } as const;
 

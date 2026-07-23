@@ -51,13 +51,16 @@ describe('Nightwell L2 hero presentation', () => {
     expect(src).toContain('HERO_IDENTITY');
     expect(src).toContain('PlaneGeometry');
     expect(src).toContain('buildPlayerCard');
-    // Old lone-sphere player body pattern must not be the player path
     expect(src).toMatch(/identityProxy.*card|proxy.*card/);
-    // CapsuleGeometry should not appear in player card builder path as primary body
     const playerSection = src.slice(src.indexOf('buildPlayerCard'), src.indexOf('private buildActor'));
-    expect(playerSection).not.toContain('SphereGeometry');
+    // Primary body is boxy humanoid + card — no sphere/capsule player torso
     expect(playerSection).not.toContain('CapsuleGeometry');
+    expect(playerSection).not.toContain('SphereGeometry');
+    expect(playerSection).toContain('BoxGeometry');
     expect(playerSection).toContain('heroCard');
+    // Ground marker must not be a full circle ring (cyan-circle bug)
+    expect(playerSection).not.toMatch(/RingGeometry\(\s*0\.\d+\s*,\s*0\.\d+\s*,\s*3[2-9]/);
+    expect(playerSection).toContain('CircleGeometry(1.05, 4)'); // diamond
   });
 });
 

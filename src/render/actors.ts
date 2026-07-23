@@ -12,8 +12,13 @@ function mat(color: number, emissive = 0x000000, em = 0): THREE.MeshStandardMate
   });
 }
 
-/** Camera-relative yaw so the hero card always faces the isometric camera. */
-const CAM_FACE_YAW = Math.atan2(-7.2, 10);
+/**
+ * Face the isometric camera. Offset must match GameView camOffset XZ.
+ * Camera is more side-on now so the card reads as a person, not a top-down disc.
+ */
+const CAM_OFFSET_X = -11;
+const CAM_OFFSET_Z = 14;
+const CAM_FACE_YAW = Math.atan2(CAM_OFFSET_X, CAM_OFFSET_Z);
 
 export class ActorRenderer {
   group = new THREE.Group();
@@ -73,25 +78,22 @@ export class ActorRenderer {
       const hitRadius = (a.attackRange ?? 1.5) * styleMul + 0.7;
 
       g.traverse((o) => {
-        if (o instanceof THREE.Mesh && o.material instanceof THREE.MeshStandardMaterial) {
-          if (o.name === 'heroCard') {
-            const hm = o.material;
-            const frames = this.heroIdleMaps.length > 0 ? this.heroIdleMaps : [this.heroMap];
-            const idx = Math.floor(this.walkPhase) % frames.length;
-            const frame = frames[idx]!;
-            if (hm.map !== frame) {
-              hm.map = frame;
-              hm.needsUpdate = true;
-            }
-            if (a.hitFlash > 0) {
-              hm.emissiveIntensity = 1.9;
-            } else if (windup > 0) {
-              hm.emissiveIntensity = 0.55 + windupT * 0.9;
-            } else {
-              hm.emissiveIntensity = (hm.userData.baseEm as number) ?? 0.5;
-            }
-            return;
+        if (o.name === 'heroCard' && o instanceof THREE.Mesh) {
+          const hm = o.material as THREE.MeshBasicMaterial;
+          const frames = this.heroIdleMaps.length > 0 ? this.heroIdleMaps : [this.heroMap];
+          const idx = Math.floor(this.walkPhase) % frames.length;
+          const frame = frames[idx]!;
+          if (hm.map !== frame) {
+            hm.map = frame;
+            hm.needsUpdate = true;
           }
+          // flash: tint white-ish without turning into a glowing orb
+          if (a.hitFlash > 0) hm.color.setHex(0xffffff);
+          else if (windup > 0) hm.color.setHex(0xffe0ff);
+          else hm.color.setHex(0xffffff);
+          return;
+        }
+        if (o instanceof THREE.Mesh && o.material instanceof THREE.MeshStandardMaterial) {
           if (a.hitFlash > 0) {
             o.material.emissiveIntensity = 2.2;
           } else if (windup > 0) {
@@ -144,64 +146,146 @@ export class ActorRenderer {
     }
   }
 
+  /**
+   * Player = angular humanoid volume + unlit identity card.
+   * No spheres/capsules as the primary body. No circular ground pad
+   * (that was reading as “cyan circle” from iso).
+   */
   private buildPlayerCard(): THREE.Group {
     const g = new THREE.Group();
     g.userData.kind = 'player';
     g.userData.identityProxy = HERO_IDENTITY.proxy;
 
+    // --- Angular 3D under-silhouette (reads as a person even if texture fails) ---
+    const bodyMat = mat(0x1a4a58, 0x2a90a0, 0.35);
+    bodyMat.userData.baseEm = 0.35;
+    const armorMat = mat(0x2ecc9a, 0x40ffd0, 0.55);
+    armorMat.userData.baseEm = 0.55;
+    const metalMat = mat(0xb8d4e8, 0x88ccff, 0.4);
+    metalMat.userData.baseEm = 0.4;
+    const cloakMat = mat(0x0c2840, 0x1a6080, 0.25);
+    cloakMat.userData.baseEm = 0.25;
+    const skinMat = mat(0xffd0b0, 0xffaa66, 0.15);
+    skinMat.userData.baseEm = 0.15;
+
+    // Legs (boxes — never spheres)
+    for (const sx of [-1, 1] as const) {
+      const leg = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.85, 0.32), bodyMat);
+      leg.position.set(sx * 0.22, 0.45, 0.05);
+      leg.castShadow = true;
+      g.add(leg);
+      const boot = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.22, 0.48), mat(0x121c28, 0x204050, 0.2));
+      boot.position.set(sx * 0.22, 0.12, 0.12);
+      g.add(boot);
+    }
+
+    // Torso — tall box, not capsule
+    const torso = new THREE.Mesh(new THREE.BoxGeometry(0.85, 1.05, 0.5), armorMat);
+    torso.position.set(0, 1.25, 0);
+    torso.castShadow = true;
+    torso.userData.baseEm = 0.55;
+    g.add(torso);
+
+    // Cloak back plane (angular diamond)
+    const cloak = new THREE.Mesh(new THREE.BoxGeometry(1.15, 1.4, 0.12), cloakMat);
+    cloak.position.set(0, 1.1, -0.28);
+    cloak.rotation.x = 0.12;
+    g.add(cloak);
+
+    // Shoulders
+    for (const sx of [-1, 1] as const) {
+      const pad = new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.28, 0.42), armorMat);
+      pad.position.set(sx * 0.55, 1.7, 0);
+      pad.userData.baseEm = 0.55;
+      g.add(pad);
+      // arm
+      const arm = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.75, 0.24), bodyMat);
+      arm.position.set(sx * 0.62, 1.2, 0.1);
+      arm.rotation.z = sx * 0.2;
+      g.add(arm);
+    }
+
+    // Head (box + hood cone tip — NOT a lone sphere body)
+    const head = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.42, 0.4), skinMat);
+    head.position.set(0, 2.05, 0.06);
+    head.castShadow = true;
+    g.add(head);
+    const hood = new THREE.Mesh(new THREE.ConeGeometry(0.38, 0.55, 5), cloakMat);
+    hood.position.set(0, 2.35, -0.02);
+    g.add(hood);
+    // glowing eyes
+    for (const sx of [-1, 1] as const) {
+      const eye = new THREE.Mesh(
+        new THREE.BoxGeometry(0.08, 0.06, 0.06),
+        new THREE.MeshBasicMaterial({ color: 0x60ffe8 }),
+      );
+      eye.position.set(sx * 0.1, 2.08, 0.26);
+      g.add(eye);
+    }
+
+    // Long sword — extends silhouette far past any “circle”
+    const hilt = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.14, 0.35), mat(0x2a3040, 0x5ce1ff, 0.3));
+    hilt.position.set(0.72, 1.15, 0.15);
+    g.add(hilt);
+    const blade = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.1, 1.7), metalMat);
+    blade.position.set(0.72, 1.15, 1.0);
+    blade.userData.baseEm = 0.4;
+    g.add(blade);
+
+    // --- Unlit identity card (crisp pixels; no emissive soup) ---
     const { w, h } = HERO_IDENTITY.cardSize;
-    const cardMat = new THREE.MeshStandardMaterial({
+    const cardMat = new THREE.MeshBasicMaterial({
       map: this.heroMap,
       color: 0xffffff,
       transparent: true,
-      alphaTest: 0.08,
-      roughness: 0.48,
-      metalness: 0.08,
-      emissive: 0x248868,
-      emissiveIntensity: 0.55,
+      alphaTest: 0.15,
       side: THREE.DoubleSide,
       depthWrite: true,
     });
-    cardMat.userData.baseEm = 0.55;
-
     const card = new THREE.Mesh(new THREE.PlaneGeometry(w, h), cardMat);
-    card.position.y = h * 0.48;
-    card.castShadow = true;
+    card.position.set(0, h * 0.42, 0.35);
+    // slight tilt toward camera so iso doesn't flatten to a disc
+    card.rotation.x = -0.18;
     card.name = 'heroCard';
     card.userData.identityProxy = 'card';
-    card.userData.baseEm = 0.55;
     g.add(card);
 
-    const ring = new THREE.Mesh(
-      new THREE.RingGeometry(0.85, 1.2, 48),
+    // Diamond marker under feet (NOT a circle ring)
+    const diamond = new THREE.Mesh(
+      new THREE.CircleGeometry(1.05, 4),
       new THREE.MeshBasicMaterial({
-        color: 0x60ffe0,
+        color: 0x40ffd0,
         transparent: true,
-        opacity: 0.95,
+        opacity: 0.35,
         side: THREE.DoubleSide,
         depthWrite: false,
       }),
     );
-    ring.rotation.x = -Math.PI / 2;
-    ring.position.y = 0.08;
-    ring.name = 'playerRing';
-    g.add(ring);
+    diamond.rotation.x = -Math.PI / 2;
+    diamond.rotation.z = Math.PI / 4;
+    diamond.position.y = 0.04;
+    diamond.name = 'playerRing';
+    g.add(diamond);
 
-    const pad = new THREE.Mesh(
-      new THREE.CircleGeometry(0.9, 32),
+    // Thin chevron outline
+    const chevron = new THREE.Mesh(
+      new THREE.RingGeometry(0.95, 1.12, 4),
       new THREE.MeshBasicMaterial({
-        color: 0x40ffc0,
+        color: 0x80ffe8,
         transparent: true,
-        opacity: 0.32,
+        opacity: 0.85,
+        side: THREE.DoubleSide,
         depthWrite: false,
       }),
     );
-    pad.rotation.x = -Math.PI / 2;
-    pad.position.y = 0.05;
-    g.add(pad);
+    chevron.rotation.x = -Math.PI / 2;
+    chevron.rotation.z = Math.PI / 4;
+    chevron.position.y = 0.06;
+    g.add(chevron);
 
-    const glow = new THREE.PointLight(0x70ffe0, 5.5, 20, 1.4);
-    glow.position.y = 1.8;
+    // Modest point light — not a spotlight that washes the card white
+    const glow = new THREE.PointLight(0x60e8d0, 2.2, 12, 1.8);
+    glow.position.set(0, 2.0, 0.5);
     g.add(glow);
 
     return g;
