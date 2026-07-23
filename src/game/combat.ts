@@ -27,6 +27,12 @@ export function damageActor(
   target.hp -= amount;
   target.hitFlash = 0.12;
   state.shake = Math.min(0.55, state.shake + (target.isBoss ? 0.25 : 0.08));
+  state.fxQueue.push({
+    kind: target.hp <= 0 ? 'death' : 'hit',
+    x: target.x,
+    z: target.z,
+    color: target.isBoss ? 0xc77dff : target.kind === 'player' ? 0xff4d6d : 0xff88aa,
+  });
 
   if (target.hp <= 0) {
     target.hp = 0;
@@ -78,6 +84,12 @@ export function playerStrike(state: GameState): boolean {
   state.strikeCd = 0.32;
   const range = p.attackRange;
   const arc = 0.95;
+  state.fxQueue.push({
+    kind: 'slash',
+    x: p.x + Math.cos(p.facing) * 1.1,
+    z: p.z + Math.sin(p.facing) * 1.1,
+    color: 0x9bffea,
+  });
   let hit = false;
   for (const e of state.enemies) {
     if (!e.alive) continue;
@@ -116,6 +128,7 @@ export function playerBolt(state: GameState): boolean {
     owner: 'player',
   };
   state.projectiles.push(pr);
+  state.fxQueue.push({ kind: 'bolt', x: pr.x, z: pr.z, color: 0x6ec8ff });
   return true;
 }
 
@@ -132,6 +145,7 @@ export function tryDash(state: GameState, dx: number, dz: number): boolean {
   state.dashCd = 0.75;
   state.focus -= 8;
   state.invuln = 0.22;
+  state.fxQueue.push({ kind: 'dash', x: p.x, z: p.z, color: 0x5ce1ff });
   return true;
 }
 

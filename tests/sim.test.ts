@@ -144,4 +144,48 @@ describe('NIGHTWELL simulation', () => {
     s.enemies = s.enemies.filter((e) => e.alive);
     expect(room.cleared).toBe(true);
   });
+
+  it('combat emits fxQueue events for the renderer to drain', () => {
+    const s = createGameStateNode(31);
+    startRun(s, 31);
+    s.enemies = [];
+    s.fxQueue = [];
+
+    // slash on strike (even with no targets)
+    s.strikeCd = 0;
+    playerStrike(s);
+    expect(s.fxQueue.some((e) => e.kind === 'slash')).toBe(true);
+    const slash = s.fxQueue.find((e) => e.kind === 'slash')!;
+    expect(typeof slash.x).toBe('number');
+    expect(typeof slash.z).toBe('number');
+
+    // hit / death from damageActor
+    s.fxQueue = [];
+    const foe = {
+      id: 'fx_t1',
+      kind: 'shade' as const,
+      x: s.player.x + 1,
+      z: s.player.z,
+      vx: 0,
+      vz: 0,
+      facing: 0,
+      radius: 0.5,
+      hp: 30,
+      maxHp: 30,
+      damage: 5,
+      speed: 1,
+      attackCd: 0,
+      attackRange: 1,
+      hitFlash: 0,
+      alive: true,
+    };
+    s.enemies.push(foe);
+    damageActor(s, foe, 5, true);
+    expect(s.fxQueue.some((e) => e.kind === 'hit')).toBe(true);
+
+    s.fxQueue = [];
+    damageActor(s, foe, 999, true);
+    expect(s.fxQueue.some((e) => e.kind === 'death')).toBe(true);
+    expect(foe.alive).toBe(false);
+  });
 });

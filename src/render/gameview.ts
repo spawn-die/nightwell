@@ -88,6 +88,7 @@ export class GameView {
     this.ensureWorld(state);
     this.world.pulse(state.time);
     this.actors.sync(state);
+    // Always drain sim fxQueue → visual particles (no silent drops)
     this.fx.sync(state, dt);
 
     this.aimMarker.position.set(aim.x, 0.08, aim.z);

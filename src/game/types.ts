@@ -112,9 +112,18 @@ export type GameState = {
   messageT: number;
   shake: number;
   runId: string;
+  /** One-frame visual events drained by the renderer */
+  fxQueue: FxEvent[];
   meta: {
     bestKills: number;
     runs: number;
     wellbornSlain: number;
   };
+};
+
+export type FxEvent = {
+  kind: 'hit' | 'death' | 'slash' | 'bolt' | 'dash';
+  x: number;
+  z: number;
+  color?: number;
 };
