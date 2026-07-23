@@ -126,11 +126,29 @@ export type GameState = {
   shake: number;
   runId: string;
   fxQueue: FxEvent[];
+  /** Floating combat text (world xz → HUD projects to screen) */
+  floaters: Floater[];
+  /** Kill combo chain */
+  combo: number;
+  comboTimer: number;
+  /** Brief freeze on big hits (seconds) */
+  hitstop: number;
   meta: {
     bestKills: number;
     runs: number;
     wellbornSlain: number;
   };
+};
+
+export type Floater = {
+  id: string;
+  x: number;
+  z: number;
+  text: string;
+  color: string;
+  life: number;
+  maxLife: number;
+  vy: number;
 };
 
 export type FxEvent = {
@@ -140,4 +158,6 @@ export type FxEvent = {
   color?: number;
   /** Optional radius for slam/telegraph rings */
   radius?: number;
+  /** Damage amount for juice */
+  amount?: number;
 };

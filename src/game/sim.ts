@@ -15,12 +15,12 @@ import {
   updateProjectiles,
 } from './combat.js';
 import { updateEnemyCombat, beginWindup, WINDUP } from './enemies.js';
-import { equipItem } from './loot.js';
+import { equipItem, tryAutoEquip, itemScore } from './loot.js';
 import { saveMeta, startRun } from './state.js';
 import type { GameState, InputState } from './types.js';
 
 export { startRun, createGameState, createGameStateNode, createInput } from './state.js';
-export { equipItem } from './loot.js';
+export { equipItem, tryAutoEquip, itemScore } from './loot.js';
 export {
   buildDungeon,
   spawnRoomEnemies,
@@ -60,6 +60,15 @@ export function step(state: GameState, input: InputState, dt: number): GameState
   }
 
   if (state.phase === 'inventory') {
+    tickFloaters(state, t);
+    return state;
+  }
+
+  // Hitstop: freeze combat briefly for punchy kills/interrupts
+  if (state.hitstop > 0) {
+    state.hitstop = Math.max(0, state.hitstop - t);
+    if (state.shake > 0) state.shake = Math.max(0, state.shake - t * 12);
+    tickFloaters(state, t);
     return state;
   }
 
@@ -67,11 +76,16 @@ export function step(state: GameState, input: InputState, dt: number): GameState
   state.time += t;
   if (state.messageT > 0) state.messageT = Math.max(0, state.messageT - t);
   if (state.shake > 0) state.shake = Math.max(0, state.shake - t * 1.8);
+  if (state.comboTimer > 0) {
+    state.comboTimer = Math.max(0, state.comboTimer - t);
+    if (state.comboTimer <= 0) state.combo = 0;
+  }
   state.dashCd = Math.max(0, state.dashCd - t);
   state.strikeCd = Math.max(0, state.strikeCd - t);
   state.boltCd = Math.max(0, state.boltCd - t);
   state.invuln = Math.max(0, state.invuln - t);
   state.focus = Math.min(state.maxFocus, state.focus + 6 * t);
+  tickFloaters(state, t);
 
   updatePlayer(state, input, t);
   updateEnemies(state, t);
@@ -154,18 +168,31 @@ function updatePickups(state: GameState, dt: number): void {
   for (const pk of state.pickups) {
     pk.life -= dt;
     const d = dist(pk.x, pk.z, p.x, p.z);
-    if (d < 1.2) {
+    // stronger magnet when close
+    if (d < 3.5 && d > 0.15) {
+      const pull = (3.5 - d) * 4 * dt;
+      pk.x += ((p.x - pk.x) / d) * pull;
+      pk.z += ((p.z - pk.z) / d) * pull;
+    }
+    if (d < 1.25) {
       state.inventory.push(pk.item);
-      // auto-equip if slot empty
-      if (!state.equipped[pk.item.slot]) {
-        equipItem(state, pk.item.id);
-      }
-      state.message = `+ ${pk.item.name}`;
-      state.messageT = 1.4;
+      const equipped = tryAutoEquip(state, pk.item);
+      state.message = equipped ? `EQUIP ${pk.item.name}` : `+ ${pk.item.name}`;
+      state.messageT = 1.5;
+      state.fxQueue.push({ kind: 'hit', x: pk.x, z: pk.z, color: 0xffd166, amount: 0 });
       pk.life = 0;
     }
   }
   state.pickups = state.pickups.filter((pk) => pk.life > 0);
+}
+
+function tickFloaters(state: GameState, dt: number): void {
+  for (const f of state.floaters) {
+    f.life -= dt;
+    // rise in world-Y is handled in HUD; track vy for vertical screen motion
+    f.vy *= 0.98;
+  }
+  state.floaters = state.floaters.filter((f) => f.life > 0);
 }
 
 export function stepFor(state: GameState, input: InputState, seconds: number, fps = 60): void {

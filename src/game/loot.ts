@@ -68,15 +68,28 @@ export function rollItem(state: GameState, levelBias = 0): ItemDef {
   };
 }
 
+/** Simple power score for auto-equip comparison */
+export function itemScore(item: ItemDef): number {
+  return item.power * 2 + item.vitality + item.focus + (item.rarity === 'echo' ? 8 : item.rarity === 'rare' ? 4 : 0);
+}
+
 export function equipItem(state: GameState, itemId: string): boolean {
   const item = state.inventory.find((i) => i.id === itemId);
   if (!item) return false;
-  const prev = state.equipped[item.slot];
   state.equipped[item.slot] = item;
-  // keep in inventory; equipped is a pointer by id presence
-  void prev;
   recomputePlayerStats(state);
   return true;
+}
+
+/** Equip if slot empty or new item is strictly better. Returns whether equipped. */
+export function tryAutoEquip(state: GameState, item: ItemDef): boolean {
+  const cur = state.equipped[item.slot];
+  if (!cur || itemScore(item) > itemScore(cur)) {
+    state.equipped[item.slot] = item;
+    recomputePlayerStats(state);
+    return true;
+  }
+  return false;
 }
 
 export function recomputePlayerStats(state: GameState): void {

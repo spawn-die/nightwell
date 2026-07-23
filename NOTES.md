@@ -8,35 +8,29 @@ npm test
 npm run build
 ```
 
-## Structure
+## Cooler (spectacle)
 
-- `src/game/*` — pure TS sim (no Three); unit tested  
-- `src/game/enemies.ts` — windups, AI, boss phases  
-- `src/render/*` — world, actors, fx, bloom  
-- `src/ui/hud.ts` — DOM HUD  
+- Bright mint **player** + personal light; saturated enemies  
+- Strong ambient/key lighting; light fog; mild bloom  
+- **Cyan portal pillar** when chamber cleared (+Z gate)  
+- Floating **damage numbers** + **combo** pop  
+- Hitstop / camera punch on kills & interrupts  
+- Low-HP red vignette  
 
-## Combat loop (keep working)
+## Better (feel)
 
-1. **Aim on mousedown** (and mousemove) — hold LMB to strike  
-2. Enemies **telegraph** (windup) then lunge/bolt/slam — **dash** i-frames or **strike to interrupt**  
-3. Clear room → *GATE OPEN* → walk **+Z cyan gate** (auto-portal)  
-4. Wellborn **phase 2** under 50% HP (enrage)  
+- Windup telegraphs + interrupt (strike while red ring)  
+- Shade lunge / bone bolt / wretch slam / Wellborn phase 2  
+- Auto-equip **if better** (`itemScore`); message `EQUIP name`  
+- Combo timer (2.4s) → `Nx COMBO`  
+- Magnet pickups  
 
-## Gotchas
+## Loop (do not regress)
 
-- Dungeon advances along **+Z**; exit is `doors.s` (maxZ).  
-- Title one-shot preview under overlay; DESCEND calls `startRun` again.  
-- `preserveDrawingBuffer: true` for headless paint metrics.  
-- Debug: `window.__NIGHTWELL__` → `{ state, input, view, startRun }`.  
+1. Aim on mousedown + hold LMB  
+2. Entrance shades → clear → **cyan +Z portal** auto-advance  
+3. Debug: `window.__NIGHTWELL__`
 
-## Shipped “good game” depth (2026-07-22)
+## Tests
 
-- Windup telegraphs + interrupt reward  
-- Shade lunge / bone kite+bolt / wretch slam  
-- Boss two-phase patterns  
-- 14 unit tests on shipped sim  
-
-## Next
-
-- Audio, denser mid-run loot choices, tuning pass  
-- Pages deploy `nightwell.spawndie.com`
+16 unit tests on shipped `src/game/*` (combo, auto-equip, windup, portal, etc.)

@@ -91,22 +91,31 @@ export class GameView {
     const dt = Math.min(0.05, this.clock.getDelta());
     this.ensureWorld(state);
     this.world.pulse(state.time);
+    this.world.updatePortal(state, state.time);
     this.actors.sync(state);
     // Always drain sim fxQueue → visual particles (no silent drops)
     this.fx.sync(state, dt);
 
     this.aimMarker.position.set(aim.x, 0.08, aim.z);
+    // brighter aim when ready to strike
+    const aimMat = this.aimMarker.material as THREE.MeshBasicMaterial;
+    aimMat.color.setHex(state.strikeCd > 0 ? 0x8866aa : 0xff6ad5);
+    aimMat.opacity = state.strikeCd > 0 ? 0.4 : 0.9;
 
     // isometric-ish follow cam
     const p = state.player;
     const target = new THREE.Vector3(p.x, 0, p.z);
     const camOffset = new THREE.Vector3(-10, 18, 14);
+    // slight zoom punch during hitstop
+    if (state.hitstop > 0) {
+      camOffset.multiplyScalar(0.94);
+    }
     const desired = target.clone().add(camOffset);
     // screen shake
     if (state.shake > 0) {
-      desired.x += (Math.random() - 0.5) * state.shake * 1.2;
-      desired.y += (Math.random() - 0.5) * state.shake * 0.6;
-      desired.z += (Math.random() - 0.5) * state.shake * 1.2;
+      desired.x += (Math.random() - 0.5) * state.shake * 1.4;
+      desired.y += (Math.random() - 0.5) * state.shake * 0.7;
+      desired.z += (Math.random() - 0.5) * state.shake * 1.4;
     }
     this.camera.position.lerp(desired, 1 - Math.pow(0.001, dt));
     const look = target.clone();
@@ -114,6 +123,19 @@ export class GameView {
     this.camera.lookAt(look);
 
     this.composer.render();
+  }
+
+  /** Project world XZ to CSS pixel position for floaters */
+  worldToScreen(x: number, y: number, z: number): { x: number; y: number; visible: boolean } {
+    const v = new THREE.Vector3(x, y, z);
+    v.project(this.camera);
+    const w = this.renderer.domElement.clientWidth;
+    const h = this.renderer.domElement.clientHeight;
+    return {
+      x: (v.x * 0.5 + 0.5) * w,
+      y: (-v.y * 0.5 + 0.5) * h,
+      visible: v.z < 1,
+    };
   }
 
   /** Raycast aim point on ground plane y=0 */

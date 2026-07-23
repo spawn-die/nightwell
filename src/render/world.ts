@@ -30,9 +30,13 @@ export class WorldRenderer {
   private roomGroups = new Map<number, THREE.Group>();
   private torchLights: THREE.PointLight[] = [];
   private pulseMeshes: THREE.Mesh[] = [];
+  /** Glowing exit pillar when chamber is clear */
+  private portalGroup = new THREE.Group();
+  private portalLight: THREE.PointLight | null = null;
 
   constructor(private scene: THREE.Scene) {
     this.scene.add(this.group);
+    this.buildPortalPrefab();
     // Very bright ambient so silhouettes never vanish into purple soup
     const amb = new THREE.AmbientLight(0xc8b8f0, 1.35);
     this.scene.add(amb);
@@ -966,6 +970,85 @@ export class WorldRenderer {
       post.position.set(x + sx * (doorW / 2), height * 0.42, z);
       g.add(post);
     }
+  }
+
+  private buildPortalPrefab(): void {
+    this.portalGroup.visible = false;
+    // vertical beam
+    const beam = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.55, 0.85, 7, 16, 1, true),
+      new THREE.MeshBasicMaterial({
+        color: 0x66f0ff,
+        transparent: true,
+        opacity: 0.35,
+        side: THREE.DoubleSide,
+        depthWrite: false,
+      }),
+    );
+    beam.position.y = 3.5;
+    beam.name = 'portalBeam';
+    this.portalGroup.add(beam);
+    const core = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.22, 0.22, 7.2, 10),
+      new THREE.MeshBasicMaterial({
+        color: 0xddffff,
+        transparent: true,
+        opacity: 0.55,
+        depthWrite: false,
+      }),
+    );
+    core.position.y = 3.6;
+    core.name = 'portalCore';
+    this.portalGroup.add(core);
+    const ring = new THREE.Mesh(
+      new THREE.TorusGeometry(1.1, 0.08, 8, 28),
+      new THREE.MeshBasicMaterial({ color: 0x88f8ff, transparent: true, opacity: 0.85 }),
+    );
+    ring.rotation.x = -Math.PI / 2;
+    ring.position.y = 0.15;
+    ring.name = 'portalRing';
+    this.portalGroup.add(ring);
+    const ring2 = ring.clone();
+    ring2.position.y = 2.2;
+    ring2.scale.setScalar(0.75);
+    ring2.name = 'portalRing2';
+    this.portalGroup.add(ring2);
+    this.portalLight = new THREE.PointLight(0x88f8ff, 0, 14, 2);
+    this.portalLight.position.y = 2.5;
+    this.portalGroup.add(this.portalLight);
+    this.scene.add(this.portalGroup);
+  }
+
+  /** Show cyan exit pillar at current room +Z gate when cleared */
+  updatePortal(state: GameState, time: number): void {
+    const room = state.rooms[state.roomIndex];
+    if (!room || state.phase === 'title') {
+      this.portalGroup.visible = false;
+      if (this.portalLight) this.portalLight.intensity = 0;
+      return;
+    }
+    const open = room.cleared && room.doors.s;
+    this.portalGroup.visible = open;
+    if (!open) {
+      if (this.portalLight) this.portalLight.intensity = 0;
+      return;
+    }
+    const b = roomBounds(room);
+    this.portalGroup.position.set(room.cx, 0, b.maxZ - 1.3);
+    if (this.portalLight) this.portalLight.intensity = 4.5 + Math.sin(time * 4) * 1.2;
+    this.portalGroup.traverse((o) => {
+      if (o.name === 'portalBeam' && o instanceof THREE.Mesh) {
+        o.rotation.y = time * 0.5;
+        const m = o.material as THREE.MeshBasicMaterial;
+        m.opacity = 0.28 + Math.sin(time * 3) * 0.08;
+      }
+      if (o.name === 'portalCore' && o instanceof THREE.Mesh) {
+        o.scale.y = 1 + Math.sin(time * 5) * 0.04;
+      }
+      if ((o.name === 'portalRing' || o.name === 'portalRing2') && o instanceof THREE.Mesh) {
+        o.rotation.z = time * (o.name === 'portalRing' ? 1.2 : -1.6);
+      }
+    });
   }
 
   pulse(time: number): void {

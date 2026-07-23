@@ -108,7 +108,7 @@ function frame(now: number): void {
   last = now;
   syncHeld();
   step(state, input, dt);
-  hud.update(state);
+  hud.update(state, view);
 
   // One-shot title backdrop: build world under the overlay without consuming real starts.
   if (state.phase === 'title' && !previewBooted) {

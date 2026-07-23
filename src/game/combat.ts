@@ -23,14 +23,29 @@ export function damageActor(
   if (!target.alive) return false;
   if (target.kind === 'player' && state.invuln > 0) return false;
 
+  const dealt = Math.min(amount, target.hp);
   target.hp -= amount;
-  target.hitFlash = 0.12;
-  state.shake = Math.min(0.55, state.shake + (target.isBoss ? 0.25 : 0.08));
+  target.hitFlash = 0.14;
+  state.shake = Math.min(0.7, state.shake + (target.isBoss ? 0.28 : fromPlayer ? 0.1 : 0.12));
   state.fxQueue.push({
     kind: target.hp <= 0 ? 'death' : 'hit',
     x: target.x,
     z: target.z,
     color: target.isBoss ? 0xc77dff : target.kind === 'player' ? 0xff4d6d : 0xff88aa,
+    amount: dealt,
+  });
+
+  // Floating damage / heal-style numbers
+  const isPlayerTarget = target.kind === 'player';
+  state.floaters.push({
+    id: nextId('flt'),
+    x: target.x + (nextRng(state) - 0.5) * 0.4,
+    z: target.z + (nextRng(state) - 0.5) * 0.4,
+    text: isPlayerTarget ? `-${Math.round(dealt)}` : `${Math.round(dealt)}`,
+    color: isPlayerTarget ? '#ff6b7a' : fromPlayer ? '#9bffea' : '#ffb0c0',
+    life: 0.85,
+    maxLife: 0.85,
+    vy: 1.8 + nextRng(state) * 0.6,
   });
 
   // Melee/bolt hits interrupt enemy telegraphs (dash-through-windup reward)
@@ -41,6 +56,7 @@ export function damageActor(
     target.attackCd = Math.max(target.attackCd, 0.4);
     target.attackStyle = undefined;
     state.fxQueue.push({ kind: 'interrupt', x: target.x, z: target.z, color: 0xffe066 });
+    state.hitstop = Math.max(state.hitstop, 0.05);
     state.message = 'INTERRUPTED';
     state.messageT = 0.65;
   }
@@ -53,14 +69,36 @@ export function damageActor(
       state.message = 'CLAIMED';
       state.messageT = 99;
       state.meta.runs += 1;
+      state.combo = 0;
+      state.comboTimer = 0;
       return true;
     }
     state.kills += 1;
+    // Combo chain
+    if (state.comboTimer > 0) state.combo += 1;
+    else state.combo = 1;
+    state.comboTimer = 2.4;
+    state.hitstop = Math.max(state.hitstop, target.isBoss ? 0.12 : 0.045);
+    if (state.combo >= 2) {
+      state.message = `${state.combo}x COMBO`;
+      state.messageT = 1.1;
+      state.floaters.push({
+        id: nextId('flt'),
+        x: target.x,
+        z: target.z,
+        text: `${state.combo}x`,
+        color: '#ffd166',
+        life: 1.0,
+        maxLife: 1.0,
+        vy: 2.2,
+      });
+    }
+
     const xp = target.isBoss ? 120 : target.kind === 'wretch' ? 28 : target.kind === 'bone' ? 18 : 12;
     grantXp(state, xp);
     state.gold += target.isBoss ? 80 : 4 + Math.floor(nextRng(state) * 6);
 
-    const dropChance = target.isBoss ? 1 : 0.4;
+    const dropChance = target.isBoss ? 1 : 0.45;
     if (nextRng(state) < dropChance) {
       const item = rollItem(state, target.isBoss ? 3 : 0);
       state.pickups.push({
@@ -79,6 +117,7 @@ export function damageActor(
       state.meta.wellbornSlain += 1;
       state.meta.bestKills = Math.max(state.meta.bestKills, state.kills);
       state.meta.runs += 1;
+      state.hitstop = 0.18;
     }
 
     markRoomClear(state);

@@ -88,6 +88,10 @@ export function createGameState(seed = Date.now() >>> 0): GameState {
     shake: 0,
     runId: `run_${seed.toString(36)}`,
     fxQueue: [],
+    floaters: [],
+    combo: 0,
+    comboTimer: 0,
+    hitstop: 0,
     meta,
   };
   return state;

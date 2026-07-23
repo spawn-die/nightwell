@@ -14,7 +14,7 @@ import {
   beginWindup,
   WINDUP,
 } from '../src/game/sim.js';
-import { equipItem, rollItem, recomputePlayerStats } from '../src/game/loot.js';
+import { equipItem, rollItem, recomputePlayerStats, itemScore, tryAutoEquip } from '../src/game/loot.js';
 import { resetActorIds } from '../src/game/dungeon.js';
 import { resetIds } from '../src/game/ids.js';
 
@@ -166,8 +166,9 @@ describe('NIGHTWELL simulation', () => {
     // clear entrance
     for (const e of s.enemies) damageActor(s, e, 9999, true);
     s.enemies = s.enemies.filter((e) => e.alive);
-    // markRoomClear is called from damageActor
     expect(s.rooms[0]!.cleared).toBe(true);
+    // drain hitstop from kills so portal step isn't frozen
+    s.hitstop = 0;
     const b = {
       maxZ: s.rooms[0]!.cz + s.rooms[0]!.d / 2,
       cx: s.rooms[0]!.cx,
@@ -287,6 +288,78 @@ describe('NIGHTWELL simulation', () => {
     updateEnemyCombat(s, boss, 0.016);
     expect(boss.bossPhase).toBe(2);
     expect(s.message).toMatch(/ENRAGED/i);
+  });
+
+  it('kills build combo and hitstop juice', () => {
+    const s = createGameStateNode(61);
+    startRun(s, 61);
+    s.enemies = [];
+    s.combo = 0;
+    s.comboTimer = 0;
+    s.hitstop = 0;
+    const mk = (id: string) => ({
+      id,
+      kind: 'shade' as const,
+      x: s.player.x + 1,
+      z: s.player.z,
+      vx: 0,
+      vz: 0,
+      facing: 0,
+      radius: 0.5,
+      hp: 5,
+      maxHp: 5,
+      damage: 1,
+      speed: 0,
+      attackCd: 0,
+      attackRange: 1,
+      hitFlash: 0,
+      alive: true,
+    });
+    const a = mk('c1');
+    s.enemies.push(a);
+    damageActor(s, a, 99, true);
+    expect(s.combo).toBe(1);
+    expect(s.comboTimer).toBeGreaterThan(0);
+    expect(s.hitstop).toBeGreaterThan(0);
+    expect(s.floaters.some((f) => f.text.includes('5') || f.text === '5')).toBe(true);
+
+    const b = mk('c2');
+    s.enemies.push(b);
+    s.comboTimer = 2;
+    damageActor(s, b, 99, true);
+    expect(s.combo).toBe(2);
+    expect(s.message).toMatch(/COMBO/i);
+  });
+
+  it('tryAutoEquip prefers higher itemScore', () => {
+    const s = createGameStateNode(63);
+    startRun(s, 63);
+    const weak = {
+      id: 'w',
+      name: 'Weak',
+      slot: 'weapon' as const,
+      power: 1,
+      vitality: 0,
+      focus: 0,
+      rarity: 'common' as const,
+    };
+    const strong = {
+      id: 's',
+      name: 'Strong',
+      slot: 'weapon' as const,
+      power: 20,
+      vitality: 2,
+      focus: 1,
+      rarity: 'rare' as const,
+    };
+    s.inventory.push(weak, strong);
+    expect(itemScore(strong)).toBeGreaterThan(itemScore(weak));
+    tryAutoEquip(s, weak);
+    expect(s.equipped.weapon?.id).toBe('w');
+    expect(tryAutoEquip(s, strong)).toBe(true);
+    expect(s.equipped.weapon?.id).toBe('s');
+    expect(tryAutoEquip(s, weak)).toBe(false);
+    expect(s.equipped.weapon?.id).toBe('s');
   });
 
   it('combat emits fxQueue events for the renderer to drain', () => {
