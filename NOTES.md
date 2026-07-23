@@ -16,9 +16,9 @@ npm run build
 
 ## Gotchas
 
-- Title screen boots a **preview run** under the overlay so the 3D scene is visible; DESCEND calls `startRun` again.  
-- First lighting pass was too dark — keep floor/ambient readable.  
-- Door lintels / wall segments are approximate box art; improve set dressing before claiming trailer quality.  
+- **Aim must update on mousedown** (not only mousemove) or melee misses.  
+- Dungeon advances along **+Z**; exit door is `doors.s` (maxZ). Auto-portal when cleared + near gate.  
+- Title boots a one-shot preview world under the overlay; real DESCEND calls `startRun` again.  
 - Debug: `window.__NIGHTWELL__` → `{ state, input, view, startRun }`.
 
 ## Shipped polish (2026-07-22)

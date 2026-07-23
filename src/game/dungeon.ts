@@ -33,10 +33,12 @@ export function buildDungeon(state: GameState): Room[] {
       cz: z + layout.d / 2,
       w: layout.w,
       d: layout.d,
-      cleared: i === 0,
+      // Entrance starts uncleared so first combat is mandatory; deeper rooms clear on kill.
+      cleared: false,
       doors: {
-        n: i < ROOM_LAYOUT.length - 1,
-        s: i > 0,
+        // Dungeon advances along +Z: "s" = deeper exit (maxZ), "n" = back (minZ).
+        n: i > 0,
+        s: i < ROOM_LAYOUT.length - 1,
         e: false,
         w: false,
       },
@@ -143,7 +145,26 @@ export function spawnRoomEnemies(state: GameState, room: Room): void {
   );
 
   if (room.cleared && room.kind !== 'boss') return;
-  if (room.kind === 'entrance') return;
+
+  // Entrance: a few shades so the run is immediately playable (not an empty box).
+  if (room.kind === 'entrance') {
+    if (state.enemies.some((e) => e.alive)) return;
+    for (let i = 0; i < 3; i++) {
+      const stats = enemyStats('shade', state.level);
+      const ang = (i / 3) * Math.PI * 2 + 0.4;
+      state.enemies.push({
+        id: nid('en'),
+        x: room.cx + Math.cos(ang) * 5.5,
+        z: room.cz + Math.sin(ang) * 4.5,
+        vx: 0,
+        vz: 0,
+        facing: 0,
+        ...stats,
+        aggro: true,
+      });
+    }
+    return;
+  }
 
   if (room.kind === 'boss') {
     if (!state.enemies.some((e) => e.isBoss)) {
@@ -184,19 +205,31 @@ export function currentRoom(state: GameState): Room {
   return state.rooms[state.roomIndex] ?? state.rooms[0]!;
 }
 
+/** True when player stands in the deeper (+Z) exit portal volume. */
+export function nearForwardExit(state: GameState): boolean {
+  const room = currentRoom(state);
+  if (!room.doors.s) return false;
+  const b = roomBounds(room);
+  return state.player.z >= b.maxZ - 2.8 && Math.abs(state.player.x - room.cx) <= 3.2;
+}
+
 export function tryAdvanceRoom(state: GameState): boolean {
   const room = currentRoom(state);
-  if (!room.cleared) return false;
+  if (!room.cleared) {
+    if (nearForwardExit(state)) {
+      state.message = 'CLEAR THE CHAMBER FIRST';
+      state.messageT = 1.2;
+    }
+    return false;
+  }
   if (state.roomIndex >= state.rooms.length - 1) return false;
-  // player must be near north door
-  const b = roomBounds(room);
-  if (state.player.z < b.maxZ - 2.5) return false;
-  if (Math.abs(state.player.x - room.cx) > 3) return false;
+  if (!nearForwardExit(state)) return false;
 
   state.roomIndex += 1;
   const next = currentRoom(state);
   state.player.x = next.cx;
   state.player.z = roomBounds(next).minZ + 3;
+  state.enemies = [];
   spawnRoomEnemies(state, next);
   state.message =
     next.kind === 'boss' ? 'THE WELLBORN STIRS' : next.kind === 'shrine' ? 'ECHO SHRINE' : 'DEEPER';
@@ -207,12 +240,18 @@ export function tryAdvanceRoom(state: GameState): boolean {
 export function markRoomClear(state: GameState): void {
   const room = currentRoom(state);
   const living = state.enemies.filter((e) => e.alive);
-  if (living.length === 0 && room.kind !== 'entrance') {
+  if (living.length === 0) {
     if (!room.cleared) {
       room.cleared = true;
       state.gold += 15 + state.roomIndex * 8;
-      state.message = room.kind === 'boss' ? 'WELL FALLS SILENT' : 'CHAMBER QUIET';
-      state.messageT = 1.8;
+      if (room.kind === 'boss') {
+        state.message = 'WELL FALLS SILENT';
+      } else if (room.doors.s) {
+        state.message = 'GATE OPEN — WALK THROUGH';
+      } else {
+        state.message = 'CHAMBER QUIET';
+      }
+      state.messageT = 2.2;
     }
   }
 }

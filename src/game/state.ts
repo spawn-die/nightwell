@@ -108,8 +108,8 @@ export function startRun(state: GameState, seed?: number): void {
   state.player.hp = state.player.maxHp;
   state.focus = state.maxFocus;
   spawnRoomEnemies(state, room);
-  state.message = 'THE WELL OPENS';
-  state.messageT = 2;
+  state.message = 'SLAY THE SHADES · THEN ENTER THE GATE';
+  state.messageT = 3.5;
 }
 
 /** Node-safe meta for tests */

@@ -2,6 +2,7 @@ import {
   clampToRoom,
   currentRoom,
   markRoomClear,
+  nearForwardExit,
   tryAdvanceRoom,
 } from './dungeon.js';
 import {
@@ -18,7 +19,13 @@ import type { GameState, InputState } from './types.js';
 
 export { startRun, createGameState, createGameStateNode, createInput } from './state.js';
 export { equipItem } from './loot.js';
-export { buildDungeon, spawnRoomEnemies, currentRoom } from './dungeon.js';
+export {
+  buildDungeon,
+  spawnRoomEnemies,
+  currentRoom,
+  tryAdvanceRoom,
+  nearForwardExit,
+} from './dungeon.js';
 export { damageActor, playerStrike, playerBolt, dist } from './combat.js';
 
 /**
@@ -74,6 +81,11 @@ export function step(state: GameState, input: InputState, dt: number): GameState
   }
 
   markRoomClear(state);
+  // Auto-descend when standing in the open +Z portal (no need to hunt for E).
+  if (state.phase === 'playing' && nearForwardExit(state)) {
+    tryAdvanceRoom(state);
+  }
+
   state.enemies = state.enemies.filter((e) => e.alive || e.hitFlash > 0);
 
   return state;

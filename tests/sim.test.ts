@@ -145,6 +145,34 @@ describe('NIGHTWELL simulation', () => {
     expect(room.cleared).toBe(true);
   });
 
+  it('startRun spawns entrance enemies so combat is immediate', () => {
+    const s = createGameStateNode(41);
+    startRun(s, 41);
+    expect(s.rooms[0]!.kind).toBe('entrance');
+    expect(s.rooms[0]!.cleared).toBe(false);
+    expect(s.enemies.filter((e) => e.alive).length).toBeGreaterThanOrEqual(3);
+  });
+
+  it('cleared chamber + portal advances run (progression)', () => {
+    const s = createGameStateNode(43);
+    startRun(s, 43);
+    // clear entrance
+    for (const e of s.enemies) damageActor(s, e, 9999, true);
+    s.enemies = s.enemies.filter((e) => e.alive);
+    // markRoomClear is called from damageActor
+    expect(s.rooms[0]!.cleared).toBe(true);
+    const b = {
+      maxZ: s.rooms[0]!.cz + s.rooms[0]!.d / 2,
+      cx: s.rooms[0]!.cx,
+    };
+    s.player.x = b.cx;
+    s.player.z = b.maxZ - 1.5;
+    const input = createInput();
+    step(s, input, 1 / 60); // auto-advance on portal
+    expect(s.roomIndex).toBe(1);
+    expect(s.enemies.filter((e) => e.alive).length).toBeGreaterThan(0);
+  });
+
   it('combat emits fxQueue events for the renderer to drain', () => {
     const s = createGameStateNode(31);
     startRun(s, 31);
